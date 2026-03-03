@@ -93,12 +93,19 @@ export const BudgetInput: React.FC = () => {
       </div>
 
       <button
-        className={styles.button}
+        className={`${styles.button} ${budget ? styles['button--calculated'] : ''}`}
         onClick={calculateBudget}
         disabled={!salary || parseFloat(salary) <= 0}
       >
-        📈 Рассчитать бюджет
+        {budget ? '🔄 Обновить бюджет' : '📈 Рассчитать бюджет'}
       </button>
+      
+      {budget && (
+        <div className={styles.calculatedIndicator}>
+          <span className={styles.checkmark}>✓</span>
+          <span>Бюджет рассчитан</span>
+        </div>
+      )}
     </section>
   )
 }

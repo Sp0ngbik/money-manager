@@ -105,4 +105,39 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  &--calculated {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.5);
+    }
+  }
+}
+
+.calculatedIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #10b981;
+}
+
+.checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #10b981;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
 }
