@@ -180,13 +180,49 @@ const budgetedExpenses = categories.map(cat => ({
 - **Сравнение** — отображение отклонений фактических расходов от плана
 - **Гибкость** — плановые записи можно редактировать и удалять
 
+## 🚀 Деплой на Vercel
+
+### Ручной деплой
+
+1. Установи Vercel CLI (уже включено в devDependencies):
+   ```bash
+   pnpm vercel login
+   ```
+
+2. Свяжи проект с Vercel:
+   ```bash
+   pnpm vercel:link
+   ```
+
+3. Задеплой:
+   ```bash
+   pnpm deploy:preview    # Preview деплой
+   pnpm deploy            # Production деплой
+   ```
+
+### Автоматический деплой через GitHub Actions
+
+При пуше в `main` ветку проект автоматически деплоится на Vercel.
+
+Необходимые Secrets в GitHub репозитории:
+- `VERCEL_TOKEN` — API токен из настроек Vercel
+- `VERCEL_ORG_ID` — ID организации
+- `VERCEL_PROJECT_ID` — ID проекта
+
+Получить можно командой:
+```bash
+vercel env pull .env.local
+```
+
 ## 📝 Скрипты
 
 ```bash
-pnpm dev          # Запуск dev-сервера
-pnpm dev:safe     # Запуск с проверкой линтера
-pnpm build        # Production сборка
-pnpm lint         # Проверка ESLint
+pnpm dev              # Запуск dev-сервера
+pnpm dev:safe         # Запуск с проверкой линтера
+pnpm build            # Production сборка
+pnpm lint             # Проверка ESLint
+pnpm deploy           # Деплой на Vercel (production)
+pnpm deploy:preview   # Деплой на Vercel (preview)
 pnpm lint:fix     # Автоисправление ESLint
 ```
 

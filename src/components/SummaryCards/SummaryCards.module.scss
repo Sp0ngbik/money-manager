@@ -1,0 +1,107 @@
+.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card {
+  background: #1a1a2e;
+  padding: 1.25rem;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #2d2d44;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  margin-bottom: 0.5rem;
+}
+
+.amountUsd {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #eaeaea;
+}
+
+.amountSecondary {
+  display: block;
+  font-size: 0.95rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.sublabel {
+  display: block;
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2d2d44;
+}
+
+// Variants
+.total {
+  .amountUsd {
+    color: #6366f1;
+  }
+}
+
+.goal {
+  .amountUsd {
+    color: #10b981;
+  }
+}
+
+.bonus {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+
+  .amountUsd {
+    color: #10b981;
+  }
+}
+
+.penalty {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+
+  .amountUsd {
+    color: #f59e0b;
+  }
+}
+
+.surplus {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.deficit {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+
+  .amountUsd {
+    color: #ef4444;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .amountUsd {
+    font-size: 1.25rem;
+  }
+
+  .amountSecondary {
+    font-size: 0.85rem;
+  }
+}
