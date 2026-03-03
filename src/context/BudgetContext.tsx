@@ -12,6 +12,48 @@ import { defaultCategories, defaultPercentages, STORAGE_KEYS } from '../types'
 import { fetchExchangeRates } from '../services/exchangeRate'
 import { BudgetContext } from './BudgetContext.types'
 
+// Helper to calculate budget from saved data
+const calculateBudgetFromData = (
+  salary: string,
+  savingsGoal: string,
+  percentages: Category,
+  categoryConfigs: Record<string, CategoryConfig>,
+  customCategories: CustomCategory[]
+): BudgetData | null => {
+  const salaryNum = parseFloat(salary) || 0
+  const savingsGoalNum = parseFloat(savingsGoal) || 0
+  
+  if (salaryNum <= 0) return null
+
+  const categories: Category = {}
+  Object.keys(categoryConfigs).forEach(key => {
+    categories[key] = Math.round(salaryNum * ((percentages[key] || 0) / 100))
+  })
+
+  const customCategoriesBudget = customCategories.map(cat => ({
+    ...cat,
+    amount: Math.round(salaryNum * (cat.percentage / 100)),
+  }))
+
+  const defaultTotalPercent = Object.values(percentages).reduce((sum, val) => sum + val, 0)
+  const customTotalPercent = customCategories.reduce((sum, cat) => sum + cat.percentage, 0)
+  const totalPercent = defaultTotalPercent + customTotalPercent
+  
+  const defaultTotalAmount = Object.values(categories).reduce((sum, val) => sum + val, 0)
+  const customTotalAmount = customCategoriesBudget.reduce((sum, cat) => sum + cat.amount, 0)
+  const remainingAmount = salaryNum - defaultTotalAmount - customTotalAmount
+  const remainingPercent = 100 - totalPercent
+
+  return {
+    salary: salaryNum,
+    savingsGoal: savingsGoalNum,
+    categories,
+    remainingAmount,
+    remainingPercent,
+    customCategories: customCategoriesBudget,
+  }
+}
+
 const loadInitialState = () => {
   const savedBudget = localStorage.getItem(STORAGE_KEYS.BUDGET)
   const savedExpenses = localStorage.getItem(STORAGE_KEYS.EXPENSES)
@@ -21,20 +63,37 @@ const loadInitialState = () => {
   const savedLastBudgetedMonth = localStorage.getItem(STORAGE_KEYS.LAST_BUDGETED_MONTH)
 
   const savedCategoryConfigs = savedCategories ? JSON.parse(savedCategories) : null
+  
+  const loadedPercentages = savedBudget && JSON.parse(savedBudget).percentages 
+    ? JSON.parse(savedBudget).percentages 
+    : { ...defaultPercentages }
+  
+  const loadedSalary = savedBudget ? JSON.parse(savedBudget).salary.toString() : ''
+  const loadedSavingsGoal = savedBudget ? JSON.parse(savedBudget).savingsGoal.toString() : ''
+  const loadedCategoryConfigs = savedCategoryConfigs || { ...defaultCategories }
+  const loadedCustomCategories = savedCustomCategories ? JSON.parse(savedCustomCategories) : []
+  
+  // Auto-calculate budget if we have saved data
+  const initialBudget = calculateBudgetFromData(
+    loadedSalary,
+    loadedSavingsGoal,
+    loadedPercentages,
+    loadedCategoryConfigs,
+    loadedCustomCategories
+  )
 
   return {
-    salary: savedBudget ? JSON.parse(savedBudget).salary.toString() : '',
-    savingsGoal: savedBudget ? JSON.parse(savedBudget).savingsGoal.toString() : '',
-    percentages: savedBudget && JSON.parse(savedBudget).percentages 
-      ? JSON.parse(savedBudget).percentages 
-      : { ...defaultPercentages },
+    salary: loadedSalary,
+    savingsGoal: loadedSavingsGoal,
+    percentages: loadedPercentages,
     expenses: savedExpenses ? JSON.parse(savedExpenses) : [],
     selectedCurrency: savedSettings && JSON.parse(savedSettings).selectedCurrency 
       ? JSON.parse(savedSettings).selectedCurrency 
       : 'BYN' as 'BYN' | 'RUB',
-    categoryConfigs: savedCategoryConfigs || { ...defaultCategories },
-    customCategories: savedCustomCategories ? JSON.parse(savedCustomCategories) : [],
+    categoryConfigs: loadedCategoryConfigs,
+    customCategories: loadedCustomCategories,
     lastBudgetedMonth: savedLastBudgetedMonth || null,
+    initialBudget,
   }
 }
 
@@ -44,7 +103,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [salary, setSalary] = useState<string>(initialState.salary)
   const [savingsGoal, setSavingsGoal] = useState<string>(initialState.savingsGoal)
   const [percentages, setPercentages] = useState<Category>(initialState.percentages)
-  const [budget, setBudget] = useState<BudgetData | null>(null)
+  const [budget, setBudget] = useState<BudgetData | null>(initialState.initialBudget)
   
   const [selectedCurrency, setSelectedCurrency] = useState<'BYN' | 'RUB'>(initialState.selectedCurrency)
   const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({
@@ -273,6 +332,17 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setBudget(newBudget)
   }, [salary, savingsGoal, percentages, categoryConfigs, customCategories])
+
+  // Auto-calculate budget when inputs change
+  useEffect(() => {
+    const salaryNum = parseFloat(salary) || 0
+    if (salaryNum > 0) {
+      const timer = setTimeout(() => {
+        calculateBudget()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [salary, savingsGoal, percentages, customCategories, calculateBudget])
 
   const addExpense = useCallback((expense: Omit<MonthlyExpense, 'id'>) => {
     const newExpense: MonthlyExpense = {
