@@ -2,7 +2,7 @@ import React from 'react'
 import { useBudget } from '../../context/useBudget'
 import type { Category, CustomCategoryBudget } from '../../types'
 import { categoryNames, categoryColors } from '../../types'
-import { convertAmount, getFormatter } from '../../services/exchangeRate'
+import { convertAmount, convertToUSD, formatUSD, formatBYN, formatRUB, getFormatter } from '../../services/exchangeRate'
 import styles from './BudgetChart.module.scss'
 
 interface BudgetChartProps {
@@ -21,7 +21,7 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
   remainingAmount,
 }) => {
   const { selectedCategory, setSelectedCategory, selectedCurrency, exchangeRates } = useBudget()
-  const formatSecondary = getFormatter(selectedCurrency)
+  const formatCurrency = getFormatter(selectedCurrency)
 
   const handleSegmentClick = (key: string) => {
     setSelectedCategory(selectedCategory === key ? null : key)
@@ -51,7 +51,7 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
               backgroundColor: categoryColors[key as string],
             }}
             onClick={() => handleSegmentClick(key as string)}
-            title={`${categoryNames[key as string]}: $${categories[key].toLocaleString()} (${percentages[key]}%)`}
+            title={`${categoryNames[key as string]}: ${formatCurrency(convertAmount(categories[key], selectedCurrency, exchangeRates))} (${percentages[key]}%)`}
           />
         ))}
         
@@ -65,7 +65,7 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
               backgroundColor: cat.color,
             }}
             onClick={() => handleSegmentClick(cat.id)}
-            title={`${cat.emoji} ${cat.name}: $${cat.amount.toLocaleString()} (${cat.percentage}%)`}
+            title={`${cat.emoji} ${cat.name}: ${formatCurrency(convertAmount(cat.amount, selectedCurrency, exchangeRates))} (${cat.percentage}%)`}
           />
         ))}
         
@@ -73,7 +73,7 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
           <div
             className={`${styles.segment} ${styles['segment--remaining']}`}
             style={{ width: `${Math.min(remainingPercent, 100)}%` }}
-            title={`Остаток: $${remainingAmount.toLocaleString()} (${remainingPercent.toFixed(1)}%)`}
+            title={`Остаток: ${formatCurrency(convertAmount(remainingAmount, selectedCurrency, exchangeRates))} (${remainingPercent.toFixed(1)}%)`}
           >
             <span className={styles.remainingLabel}>+{remainingPercent.toFixed(0)}%</span>
           </div>
@@ -107,10 +107,19 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
             <span className={styles.selectedPercent}>{percentages[selectedCategory]}%</span>
           </div>
           <div className={styles.selectedAmounts}>
-            <span className={styles.amountUsd}>${categories[selectedCategory].toLocaleString()}</span>
-            <span className={styles.amountSecondary}>
-              {formatSecondary(convertAmount(categories[selectedCategory], selectedCurrency, exchangeRates))}
+            <span className={styles.amountPrimary}>
+              {formatCurrency(convertAmount(categories[selectedCategory], selectedCurrency, exchangeRates))}
             </span>
+            {selectedCurrency === 'USD' ? (
+              <>
+                <span className={styles.amountSecondary}>≈ {formatBYN(categories[selectedCategory] * exchangeRates.BYN)}</span>
+                <span className={styles.amountSecondary}>≈ {formatRUB(categories[selectedCategory] * exchangeRates.RUB)}</span>
+              </>
+            ) : (
+              <span className={styles.amountSecondary}>
+                ≈ {formatUSD(convertToUSD(convertAmount(categories[selectedCategory], selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -130,10 +139,19 @@ export const BudgetChart: React.FC<BudgetChartProps> = ({
             <span className={styles.selectedPercent}>{selectedCustomCat.percentage}%</span>
           </div>
           <div className={styles.selectedAmounts}>
-            <span className={styles.amountUsd}>${selectedCustomCat.amount.toLocaleString()}</span>
-            <span className={styles.amountSecondary}>
-              {formatSecondary(convertAmount(selectedCustomCat.amount, selectedCurrency, exchangeRates))}
+            <span className={styles.amountPrimary}>
+              {formatCurrency(convertAmount(selectedCustomCat.amount, selectedCurrency, exchangeRates))}
             </span>
+            {selectedCurrency === 'USD' ? (
+              <>
+                <span className={styles.amountSecondary}>≈ {formatBYN(selectedCustomCat.amount * exchangeRates.BYN)}</span>
+                <span className={styles.amountSecondary}>≈ {formatRUB(selectedCustomCat.amount * exchangeRates.RUB)}</span>
+              </>
+            ) : (
+              <span className={styles.amountSecondary}>
+                ≈ {formatUSD(convertToUSD(convertAmount(selectedCustomCat.amount, selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}
+              </span>
+            )}
           </div>
         </div>
       )}

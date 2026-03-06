@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useBudget } from '../../context/useBudget'
 import type { Category } from '../../types'
 import { categoryNames, categoryColors } from '../../types'
-import { convertAmount, getFormatter } from '../../services/exchangeRate'
+import { convertAmount, convertToUSD, formatUSD, getFormatter } from '../../services/exchangeRate'
 import styles from './PercentageEditor.module.scss'
 
 export const PercentageEditor: React.FC = () => {
@@ -23,7 +23,7 @@ export const PercentageEditor: React.FC = () => {
     exchangeRates,
   } = useBudget()
 
-  const formatSecondary = getFormatter(selectedCurrency)
+  const formatCurrency = getFormatter(selectedCurrency)
   const salaryNum = parseFloat(salary) || 0
 
   const [newCategoryName, setNewCategoryName] = useState('')
@@ -120,10 +120,14 @@ export const PercentageEditor: React.FC = () => {
                   </div>
                   {salaryNum > 0 && (
                     <div className={styles.preview}>
-                      <span className={styles.preview__usd}>${previewAmount.toLocaleString()}</span>
-                      <span className={styles.preview__secondary}>
-                        {formatSecondary(convertAmount(previewAmount, selectedCurrency, exchangeRates))}
+                      <span className={styles.preview__primary}>
+                        {formatCurrency(convertAmount(previewAmount, selectedCurrency, exchangeRates))}
                       </span>
+                      {selectedCurrency !== 'USD' && (
+                        <span className={styles.preview__secondary}>
+                          ≈ {formatUSD(convertToUSD(convertAmount(previewAmount, selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -171,10 +175,14 @@ export const PercentageEditor: React.FC = () => {
                     </div>
                     {salaryNum > 0 && (
                       <div className={styles.preview}>
-                        <span className={styles.preview__usd}>${previewAmount.toLocaleString()}</span>
-                        <span className={styles.preview__secondary}>
-                          {formatSecondary(convertAmount(previewAmount, selectedCurrency, exchangeRates))}
+                        <span className={styles.preview__primary}>
+                          {formatCurrency(convertAmount(previewAmount, selectedCurrency, exchangeRates))}
                         </span>
+                        {selectedCurrency !== 'USD' && (
+                          <span className={styles.preview__secondary}>
+                            ≈ {formatUSD(convertToUSD(convertAmount(previewAmount, selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

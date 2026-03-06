@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useBudget } from '../../context/useBudget'
 import type { Category } from '../../types'
 import { categoryNames, categoryColors } from '../../types'
+import { convertAmount, convertToUSD, formatUSD, getFormatter } from '../../services/exchangeRate'
 import styles from './MonthlyTracker.module.scss'
 
 export const MonthlyTracker: React.FC = () => {
@@ -13,7 +14,11 @@ export const MonthlyTracker: React.FC = () => {
     customCategories,
     generateMonthlyBudget,
     hasBudgetForMonth,
+    selectedCurrency,
+    exchangeRates,
   } = useBudget()
+
+  const formatCurrency = getFormatter(selectedCurrency)
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -186,7 +191,7 @@ export const MonthlyTracker: React.FC = () => {
         </div>
 
         <div className={styles.selectGroup}>
-          <label>Сумма ($)</label>
+          <label>Сумма ({selectedCurrency})</label>
           <input
             type="number"
             value={newExpense.amount}
@@ -234,7 +239,12 @@ export const MonthlyTracker: React.FC = () => {
       {hasBudget && (
         <div className={styles.budgetStatus}>
           <span className={styles.budgetStatusBadge}>📋 Есть план бюджета</span>
-          <span className={styles.budgetStatusHint}>Запланировано: ${totalBudgeted.toLocaleString()}</span>
+          <span className={styles.budgetStatusHint}>
+            Запланировано: {formatCurrency(convertAmount(totalBudgeted, selectedCurrency, exchangeRates))}
+            {selectedCurrency !== 'USD' && (
+              <span className={styles.secondaryAmount}> ≈ {formatUSD(convertToUSD(convertAmount(totalBudgeted, selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}</span>
+            )}
+          </span>
         </div>
       )}
 
@@ -242,18 +252,18 @@ export const MonthlyTracker: React.FC = () => {
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Бюджет на месяц</div>
-            <div className={styles.statValue}>${budget.salary.toLocaleString()}</div>
+            <div className={styles.statValue}>{formatCurrency(convertAmount(budget.salary, selectedCurrency, exchangeRates))}</div>
           </div>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Потрачено</div>
             <div className={`${styles.statValue} ${styles['statValue--negative']}`}>
-              ${totalSpent.toLocaleString()}
+              {formatCurrency(convertAmount(totalSpent, selectedCurrency, exchangeRates))}
             </div>
           </div>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Остаток</div>
             <div className={`${styles.statValue} ${remaining >= 0 ? styles['statValue--positive'] : styles['statValue--negative']}`}>
-              ${remaining.toLocaleString()}
+              {formatCurrency(convertAmount(remaining, selectedCurrency, exchangeRates))}
             </div>
           </div>
           <div className={styles.statCard}>
@@ -294,10 +304,10 @@ export const MonthlyTracker: React.FC = () => {
                     />
                     <span className={styles.expenseDescription}>{expense.description}</span>
                   </div>
-                  <span className={styles.expenseAmount}>${expense.amount.toLocaleString()}</span>
+                  <span className={styles.expenseAmount}>{formatCurrency(convertAmount(expense.amount, selectedCurrency, exchangeRates))}</span>
                   <span className={`${styles.expenseType} ${hasActual ? (isOver ? styles['expenseType--over'] : styles['expenseType--ontrack']) : ''}`}>
                     {hasActual 
-                      ? `Факт: $${variance.actual.toLocaleString()} ${isOver ? '⚠️' : '✓'}`
+                      ? `Факт: ${formatCurrency(convertAmount(variance.actual, selectedCurrency, exchangeRates))} ${isOver ? '⚠️' : '✓'}`
                       : 'Запланировано'}
                   </span>
                   <button
@@ -340,7 +350,7 @@ export const MonthlyTracker: React.FC = () => {
                     />
                     <span className={styles.expenseDescription}>{expense.description}</span>
                   </div>
-                  <span className={styles.expenseAmount}>${expense.amount.toLocaleString()}</span>
+                  <span className={styles.expenseAmount}>{formatCurrency(convertAmount(expense.amount, selectedCurrency, exchangeRates))}</span>
                   <span className={styles.expenseDate}>{expense.date}</span>
                   <button
                     className={styles.deleteButton}
@@ -398,10 +408,10 @@ export const MonthlyTracker: React.FC = () => {
                   />
                 </div>
                 <div className={styles.categoryValue}>
-                  <div className={styles.actualValue}>${amount.toLocaleString()}</div>
+                  <div className={styles.actualValue}>{formatCurrency(convertAmount(amount, selectedCurrency, exchangeRates))}</div>
                   {hasBudgeted && (
                     <div className={`${styles.variance} ${variance > 0 ? styles['variance--over'] : variance < 0 ? styles['variance--under'] : ''}`}>
-                      {variance > 0 ? '+' : ''}${variance.toLocaleString()}
+                      {variance > 0 ? '+' : ''}{formatCurrency(convertAmount(variance, selectedCurrency, exchangeRates))}
                     </div>
                   )}
                   {isOverBudget && <span className={styles.overBudgetBadge}>⚠️</span>}

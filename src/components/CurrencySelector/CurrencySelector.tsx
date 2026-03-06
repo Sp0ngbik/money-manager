@@ -18,19 +18,25 @@ export const CurrencySelector: React.FC = () => {
   return (
     <div className={styles.selector}>
       <div className={styles.currencyBlock}>
-        <span className={styles.label}>Вторичная валюта:</span>
+        <span className={styles.label}>Валюта:</span>
         <div className={styles.buttons}>
+          <button
+            className={`${styles.button} ${selectedCurrency === 'USD' ? styles['button--active'] : ''}`}
+            onClick={() => setSelectedCurrency('USD')}
+          >
+            🇺🇸 $ (USA)
+          </button>
           <button
             className={`${styles.button} ${selectedCurrency === 'BYN' ? styles['button--active'] : ''}`}
             onClick={() => setSelectedCurrency('BYN')}
           >
-            BYN (РБ)
+            🇧🇾 Br (РБ)
           </button>
           <button
             className={`${styles.button} ${selectedCurrency === 'RUB' ? styles['button--active'] : ''}`}
             onClick={() => setSelectedCurrency('RUB')}
           >
-            ₽ (РФ)
+            🇷🇺 ₽ (РФ)
           </button>
         </div>
       </div>

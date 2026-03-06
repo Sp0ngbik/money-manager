@@ -104,7 +104,7 @@ export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
 }
 
 export const formatUSD = (amount: number): string => {
-  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  return `${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$`
 }
 
 export const formatBYN = (amount: number): string => {
@@ -117,12 +117,19 @@ export const formatRUB = (amount: number): string => {
 
 export const convertAmount = (
   amountUSD: number,
-  targetCurrency: 'BYN' | 'RUB',
+  targetCurrency: 'USD' | 'BYN' | 'RUB',
   rates: ExchangeRates
 ): number => {
+  if (targetCurrency === 'USD') return amountUSD
   return Math.round(amountUSD * rates[targetCurrency])
 }
 
-export const getFormatter = (currency: 'BYN' | 'RUB') => {
-  return currency === 'BYN' ? formatBYN : formatRUB
+export const getFormatter = (currency: 'USD' | 'BYN' | 'RUB') => {
+  if (currency === 'USD') return formatUSD
+  if (currency === 'BYN') return formatBYN
+  return formatRUB
+}
+
+export const convertToUSD = (amount: number, fromCurrency: 'BYN' | 'RUB', rates: ExchangeRates): number => {
+  return Math.round(amount / rates[fromCurrency])
 }

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useBudget } from '../../context/useBudget'
 import type { CustomCategoryBudget } from '../../types'
-import { convertAmount, getFormatter } from '../../services/exchangeRate'
+import { convertAmount, convertToUSD, formatUSD, getFormatter } from '../../services/exchangeRate'
 import styles from './CustomCategoryCard.module.scss'
 
 interface CustomCategoryCardProps {
@@ -16,7 +16,7 @@ export const CustomCategoryCard: React.FC<CustomCategoryCardProps> = ({
   const { selectedCategory, setSelectedCategory, selectedCurrency, exchangeRates } = useBudget()
   const isSelected = selectedCategory === category.id
 
-  const formatSecondary = getFormatter(selectedCurrency)
+  const formatCurrency = getFormatter(selectedCurrency)
 
   const handleClick = () => {
     setSelectedCategory(isSelected ? null : category.id)
@@ -34,10 +34,14 @@ export const CustomCategoryCard: React.FC<CustomCategoryCardProps> = ({
         <span className={styles.name}>{category.name}</span>
       </div>
       <div className={styles.amount}>
-        <span className={styles.amountUsd}>${category.amount.toLocaleString()}</span>
-        <span className={styles.amountSecondary}>
-          {formatSecondary(convertAmount(category.amount, selectedCurrency, exchangeRates))}
+        <span className={styles.amountPrimary}>
+          {formatCurrency(convertAmount(category.amount, selectedCurrency, exchangeRates))}
         </span>
+        {selectedCurrency !== 'USD' && (
+          <span className={styles.amountSecondary}>
+            ≈ {formatUSD(convertToUSD(convertAmount(category.amount, selectedCurrency, exchangeRates), selectedCurrency, exchangeRates))}
+          </span>
+        )}
       </div>
       <div className={styles.bar}>
         <div
