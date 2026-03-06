@@ -1,7 +1,6 @@
 import React from 'react'
 import { useBudget } from '../../context/useBudget'
 import { CurrencySelector } from '../CurrencySelector/CurrencySelector'
-import { ExchangeRateDisplay } from '../ExchangeRateDisplay/ExchangeRateDisplay'
 import { convertAmount, getFormatter } from '../../services/exchangeRate'
 import styles from './BudgetInput.module.scss'
 
@@ -35,10 +34,7 @@ export const BudgetInput: React.FC = () => {
 
   return (
     <section className={styles.section}>
-      <div className={styles.header}>
-        <CurrencySelector />
-        <ExchangeRateDisplay />
-      </div>
+      <CurrencySelector />
 
       <div className={styles.inputGroup}>
         <label htmlFor="salary">
@@ -109,4 +105,3 @@ export const BudgetInput: React.FC = () => {
     </section>
   )
 }
-

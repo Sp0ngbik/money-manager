@@ -108,11 +108,11 @@ export const formatUSD = (amount: number): string => {
 }
 
 export const formatBYN = (amount: number): string => {
-  return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Br`
+  return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Br`
 }
 
 export const formatRUB = (amount: number): string => {
-  return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₽`
+  return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`
 }
 
 export const convertAmount = (
