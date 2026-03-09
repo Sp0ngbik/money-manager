@@ -75,6 +75,14 @@
     align-items: center;
     gap: 0.5rem;
   }
+
+  @media (max-width: 600px) {
+    padding: 0.5rem;
+
+    label {
+      font-size: 0.8rem;
+    }
+  }
 }
 
 .deleteButton {
@@ -139,6 +147,16 @@
   &__secondary {
     font-size: 0.8rem;
     color: #6b7280;
+  }
+
+  @media (max-width: 600px) {
+    &__usd {
+      font-size: 0.85rem;
+    }
+
+    &__secondary {
+      font-size: 0.7rem;
+    }
   }
 }
 
@@ -229,12 +247,17 @@
 
 .addCategoryForm {
   display: grid;
-  grid-template-columns: 1fr 1fr 80px 60px;
+  grid-template-columns: 2fr 1fr 70px 70px auto;
   gap: 0.75rem;
   align-items: flex-end;
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -261,6 +284,17 @@
       border-color: #6366f1;
     }
   }
+
+  @media (max-width: 768px) {
+    label {
+      font-size: 0.75rem;
+    }
+
+    input {
+      padding: 0.4rem;
+      font-size: 0.85rem;
+    }
+  }
 }
 
 .colorInput {
@@ -270,6 +304,10 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
+
+  @media (max-width: 768px) {
+    height: 34px;
+  }
 }
 
 .addButton {
@@ -292,5 +330,11 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
   }
 }

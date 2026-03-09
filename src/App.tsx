@@ -16,7 +16,7 @@ import './index.scss'
 import styles from './App.module.scss'
 
 function AppContent() {
-  const { budget, percentages, effectiveSavings, setSelectedCategory } = useBudget()
+  const { budget, percentages, effectiveSavings } = useBudget()
 
   return (
     <div className={styles.app}>
@@ -37,10 +37,7 @@ function AppContent() {
 
             <SummaryCards budget={budget} effectiveSavings={effectiveSavings} />
 
-            <div 
-              className={styles.categoriesGrid}
-              onMouseLeave={() => setSelectedCategory(null)}
-            >
+            <div className={styles.categoriesGrid}>
               {/* Default categories */}
               {(Object.keys(budget.categories) as Array<keyof Category>).map((key) => (
                 <CategoryCard

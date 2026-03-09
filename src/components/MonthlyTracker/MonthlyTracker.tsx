@@ -3,6 +3,7 @@ import { useBudget } from '../../context/useBudget'
 import type { Category } from '../../types'
 import { categoryNames, categoryColors } from '../../types'
 import { convertAmount, convertToUSD, formatUSD, getFormatter } from '../../services/exchangeRate'
+import { Modal } from '../Modal/Modal'
 import styles from './MonthlyTracker.module.scss'
 
 export const MonthlyTracker: React.FC = () => {
@@ -30,6 +31,9 @@ export const MonthlyTracker: React.FC = () => {
     amount: '',
     description: '',
   })
+
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
+  const [isModalClosing, setIsModalClosing] = useState(false)
 
   const monthExpenses = useMemo(() => {
     return expenses.filter(e => e.month === selectedMonth)
@@ -90,6 +94,7 @@ export const MonthlyTracker: React.FC = () => {
       amount,
       description: newExpense.description || categoryName,
       date: new Date().toISOString().split('T')[0],
+      currency: selectedCurrency,
     })
 
     setNewExpense({
@@ -100,9 +105,16 @@ export const MonthlyTracker: React.FC = () => {
   }
 
   const handleGenerateBudget = () => {
-    if (window.confirm(`Создать запланированные расходы для ${selectedMonth} на основе распределения бюджета?`)) {
+    setIsGenerateModalOpen(true)
+  }
+
+  const handleConfirmGenerate = () => {
+    setIsModalClosing(true)
+    setTimeout(() => {
       generateMonthlyBudget(selectedMonth)
-    }
+      setIsGenerateModalOpen(false)
+      setIsModalClosing(false)
+    }, 200)
   }
 
   const getCategoryPercent = (amount: number): number => {
@@ -235,6 +247,47 @@ export const MonthlyTracker: React.FC = () => {
           </span>
         </div>
       )}
+
+      {/* Modal для подтверждения генерации бюджета */}
+      <Modal
+        isOpen={isGenerateModalOpen}
+        onClose={() => {
+          setIsModalClosing(true)
+          setTimeout(() => {
+            setIsGenerateModalOpen(false)
+            setIsModalClosing(false)
+          }, 200)
+        }}
+        onConfirm={handleConfirmGenerate}
+        title="Запланировать расходы"
+        message={`Создать запланированные расходы для ${selectedMonth} на основе вашего распределения бюджета?`}
+        confirmText="Создать"
+        cancelText="Отмена"
+        isClosing={isModalClosing}
+        data={budget ? {
+          categories: [
+            ...Object.keys(budget.categories).map(key => ({
+              id: key,
+              name: categoryNames[key],
+              amount: budget.categories[key],
+              percent: Math.round((budget.categories[key] / budget.salary) * 100),
+              color: categoryColors[key],
+            })),
+            ...(budget.customCategories || []).map(cat => ({
+              id: cat.id,
+              name: cat.name,
+              amount: cat.amount,
+              percent: cat.percentage,
+              color: cat.color,
+              icon: cat.emoji,
+            }))
+          ],
+          totalAmount: Object.values(budget.categories).reduce((sum, val) => sum + val, 0) + 
+                       (budget.customCategories || []).reduce((sum, cat) => sum + cat.amount, 0),
+          currency: selectedCurrency,
+          totalPercent: 100
+        } : undefined}
+      />
 
       {hasBudget && (
         <div className={styles.budgetStatus}>

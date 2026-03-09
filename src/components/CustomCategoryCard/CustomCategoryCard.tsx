@@ -14,12 +14,18 @@ export const CustomCategoryCard: React.FC<CustomCategoryCardProps> = ({
   salary,
 }) => {
   const { selectedCategory, setSelectedCategory, selectedCurrency, exchangeRates } = useBudget()
-  const isSelected = selectedCategory === category.id
+  const isSelected = selectedCategory.has(category.id)
 
   const formatCurrency = getFormatter(selectedCurrency)
 
   const handleClick = () => {
-    setSelectedCategory(isSelected ? null : category.id)
+    const newSelected = new Set(selectedCategory)
+    if (newSelected.has(category.id)) {
+      newSelected.delete(category.id)
+    } else {
+      newSelected.add(category.id)
+    }
+    setSelectedCategory(newSelected)
   }
 
   return (

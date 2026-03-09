@@ -130,6 +130,45 @@ export const getFormatter = (currency: 'USD' | 'BYN' | 'RUB') => {
   return formatRUB
 }
 
-export const convertToUSD = (amount: number, fromCurrency: 'BYN' | 'RUB', rates: ExchangeRates): number => {
+export const convertToUSD = (amount: number, fromCurrency: 'USD' | 'BYN' | 'RUB', rates: ExchangeRates): number => {
+  if (fromCurrency === 'USD') return amount
   return Math.round(amount / rates[fromCurrency])
+}
+
+export const convertBetweenCurrencies = (
+  amount: number,
+  fromCurrency: 'USD' | 'BYN' | 'RUB',
+  toCurrency: 'USD' | 'BYN' | 'RUB',
+  rates: ExchangeRates
+): number => {
+  if (fromCurrency === toCurrency) return amount
+  const amountInUSD = convertToUSD(amount, fromCurrency, rates)
+  return convertAmount(amountInUSD, toCurrency, rates)
+}
+
+export const getCurrencyDisplayOrder = (
+  selectedCurrency: 'USD' | 'BYN' | 'RUB'
+): Array<'USD' | 'BYN' | 'RUB'> => {
+  if (selectedCurrency === 'USD') return ['USD', 'BYN', 'RUB']
+  if (selectedCurrency === 'BYN') return ['BYN', 'USD', 'RUB']
+  return ['RUB', 'BYN', 'USD']
+}
+
+export const getConvertedAmountsInOrder = (
+  amount: number,
+  selectedCurrency: 'USD' | 'BYN' | 'RUB',
+  rates: ExchangeRates
+): string => {
+  const order = getCurrencyDisplayOrder(selectedCurrency)
+  const converted: Record<'USD' | 'BYN' | 'RUB', number> = {
+    USD: convertBetweenCurrencies(amount, selectedCurrency, 'USD', rates),
+    BYN: convertBetweenCurrencies(amount, selectedCurrency, 'BYN', rates),
+    RUB: convertBetweenCurrencies(amount, selectedCurrency, 'RUB', rates),
+  }
+  
+  return order.map(currency => {
+    if (currency === 'USD') return formatUSD(converted.USD)
+    if (currency === 'BYN') return formatBYN(converted.BYN)
+    return formatRUB(converted.RUB)
+  }).join(' ≈ ')
 }

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useBudget } from '../../context/useBudget'
 import { CurrencySelector } from '../CurrencySelector/CurrencySelector'
-import { formatUSD, formatBYN, formatRUB } from '../../services/exchangeRate'
+import { getConvertedAmountsInOrder } from '../../services/exchangeRate'
 import styles from './BudgetInput.module.scss'
 
 export const BudgetInput: React.FC = () => {
@@ -39,7 +39,7 @@ export const BudgetInput: React.FC = () => {
       <div className={styles.inputGroup}>
         <label htmlFor="salary">
           Ежемесячный доход
-<span className={styles.currencyBadge}>{selectedCurrency}</span>
+<span className={`${styles.currencyBadge} ${styles['currencyBadge--' + selectedCurrency]}`}>{selectedCurrency}</span>
         </label>
         <input
           type="number"
@@ -51,19 +51,7 @@ export const BudgetInput: React.FC = () => {
         />
         {salary && parseFloat(salary) > 0 && (
           <span className={styles.currencySecondary}>
-            {selectedCurrency === 'USD' ? (
-              <>
-                {formatUSD(parseFloat(salary))} ≈ {formatBYN(parseFloat(salary) * exchangeRates.BYN)} ≈ {formatRUB(parseFloat(salary) * exchangeRates.RUB)}
-              </>
-            ) : selectedCurrency === 'BYN' ? (
-              <>
-                {formatBYN(parseFloat(salary) * exchangeRates.BYN)} ≈ {formatUSD(parseFloat(salary))} ≈ {formatRUB(parseFloat(salary) * exchangeRates.RUB)}
-              </>
-            ) : (
-              <>
-                {formatRUB(parseFloat(salary) * exchangeRates.RUB)} ≈ {formatUSD(parseFloat(salary))} ≈ {formatBYN(parseFloat(salary) * exchangeRates.BYN)}
-              </>
-            )}
+            {getConvertedAmountsInOrder(parseFloat(salary), selectedCurrency, exchangeRates)}
           </span>
         )}
       </div>
@@ -71,7 +59,7 @@ export const BudgetInput: React.FC = () => {
       <div className={styles.inputGroup}>
         <label htmlFor="savingsGoal">
           Цель сбережений
-<span className={styles.currencyBadge}>{selectedCurrency}</span>
+<span className={`${styles.currencyBadge} ${styles['currencyBadge--' + selectedCurrency]}`}>{selectedCurrency}</span>
         </label>
         <input
           type="number"
@@ -83,19 +71,7 @@ export const BudgetInput: React.FC = () => {
         />
         {savingsGoal && parseFloat(savingsGoal) > 0 && (
           <span className={styles.currencySecondary}>
-            {selectedCurrency === 'USD' ? (
-              <>
-                {formatUSD(parseFloat(savingsGoal))} ≈ {formatBYN(parseFloat(savingsGoal) * exchangeRates.BYN)} ≈ {formatRUB(parseFloat(savingsGoal) * exchangeRates.RUB)}
-              </>
-            ) : selectedCurrency === 'BYN' ? (
-              <>
-                {formatBYN(parseFloat(savingsGoal) * exchangeRates.BYN)} ≈ {formatUSD(parseFloat(savingsGoal))} ≈ {formatRUB(parseFloat(savingsGoal) * exchangeRates.RUB)}
-              </>
-            ) : (
-              <>
-                {formatRUB(parseFloat(savingsGoal) * exchangeRates.RUB)} ≈ {formatUSD(parseFloat(savingsGoal))} ≈ {formatBYN(parseFloat(savingsGoal) * exchangeRates.BYN)}
-              </>
-            )}
+            {getConvertedAmountsInOrder(parseFloat(savingsGoal), selectedCurrency, exchangeRates)}
           </span>
         )}
         {monthsToGoal !== null && monthsToGoal !== Infinity && (

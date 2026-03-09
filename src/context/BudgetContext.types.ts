@@ -18,8 +18,8 @@ export interface BudgetContextType {
   setPercentages: (value: Category) => void
   budget: BudgetData | null
   
-  selectedCurrency: 'BYN' | 'RUB'
-  setSelectedCurrency: (currency: 'BYN' | 'RUB') => void
+  selectedCurrency: 'USD' | 'BYN' | 'RUB'
+  setSelectedCurrency: (currency: 'USD' | 'BYN' | 'RUB') => void
   exchangeRates: ExchangeRates
   isLoadingRates: boolean
   refreshRates: () => void
@@ -30,8 +30,8 @@ export interface BudgetContextType {
   getMonthlyStats: (month: string) => MonthlyStats
   getAllMonthlyStats: () => MonthlyStats[]
   
-  selectedCategory: string | null
-  setSelectedCategory: (category: string | null) => void
+  selectedCategory: Set<string>
+  setSelectedCategory: React.Dispatch<React.SetStateAction<Set<string>>>
   isEditing: boolean
   setIsEditing: (value: boolean) => void
   

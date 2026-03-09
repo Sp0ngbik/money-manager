@@ -31,16 +31,81 @@ export const PercentageEditor: React.FC = () => {
   const [newCategoryColor, setNewCategoryColor] = useState('#6366f1')
   const [newCategoryPercent, setNewCategoryPercent] = useState('')
 
-  const updatePercentage = (category: keyof Category, value: string) => {
-    const num = parseFloat(value) || 0
-    setPercentages({
-      ...percentages,
-      [category]: Math.max(0, num),
-    })
-  }
-
   const calculatePreviewAmount = (percent: number): number => {
     return Math.round(salaryNum * (percent / 100))
+  }
+
+  // Очистка ввода - разрешает только цифры, точку и минус
+  const sanitizePercentageInput = (value: string): string => {
+    // Разрешить только цифры, точку и минус в начале
+    const cleaned = value.replace(/[^\d.-]/g, '')
+    
+    // Разрешить только один минус в начале
+    const hasMinus = cleaned.startsWith('-')
+    const withoutMinus = hasMinus ? cleaned.slice(1) : cleaned
+    
+    // Разрешить только одну точку
+    const parts = withoutMinus.split('.')
+    const withOneDot = parts.length > 2 
+      ? parts[0] + '.' + parts.slice(1).join('') 
+      : withoutMinus
+    
+    return hasMinus ? '-' + withOneDot : withOneDot
+  }
+
+  // Форматирование значения для отображения в инпуте
+  const formatPercentageInput = (value: number): string => {
+    // 0 показываем как пустую строку (для удобного редактирования)
+    return value === 0 ? '' : value.toString()
+  }
+
+  // Обработчик изменения значения для default категорий
+  const handlePercentageChange = (category: keyof Category, inputValue: string) => {
+    const cleaned = sanitizePercentageInput(inputValue)
+    
+    if (cleaned === '') {
+      // Пустое - сохраняем 0 в state, но показываем пустую строку в инпуте
+      setPercentages({
+        ...percentages,
+        [category]: 0,
+      })
+    } else {
+      const num = parseFloat(cleaned) || 0
+      setPercentages({
+        ...percentages,
+        [category]: Math.max(0, num),
+      })
+    }
+  }
+
+  // Обработчик потери фокуса для default категорий
+  const handlePercentageBlur = (category: keyof Category, currentValue: number) => {
+    if (currentValue === 0) {
+      // Если 0, показываем 0 после потери фокуса
+      setPercentages({
+        ...percentages,
+        [category]: 0,
+      })
+    }
+  }
+
+  // Обработчик изменения значения для custom категорий
+  const handleCustomPercentageChange = (categoryId: string, inputValue: string) => {
+    const cleaned = sanitizePercentageInput(inputValue)
+    
+    if (cleaned === '') {
+      updateCustomCategory(categoryId, { percentage: 0 })
+    } else {
+      const num = parseFloat(cleaned) || 0
+      updateCustomCategory(categoryId, { percentage: Math.max(0, num) })
+    }
+  }
+
+  // Обработчик потери фокуса для custom категорий
+  const handleCustomPercentageBlur = (categoryId: string, currentValue: number) => {
+    if (currentValue === 0) {
+      updateCustomCategory(categoryId, { percentage: 0 })
+    }
   }
 
   const getBudgetStatus = () => {
@@ -110,11 +175,12 @@ export const PercentageEditor: React.FC = () => {
                   <label>{categoryNames[key]}</label>
                   <div className={styles.field}>
                     <input
-                      type="number"
-                      value={percentages[key]}
-                      onChange={(e) => updatePercentage(key, e.target.value)}
-                      min="0"
-                      step="0.5"
+                      type="text"
+                      inputMode="decimal"
+                      value={formatPercentageInput(percentages[key])}
+                      onChange={(e) => handlePercentageChange(key, e.target.value)}
+                      onBlur={() => handlePercentageBlur(key, percentages[key])}
+                      placeholder="0"
                     />
                     <span className={styles.suffix}>%</span>
                   </div>
@@ -165,11 +231,12 @@ export const PercentageEditor: React.FC = () => {
                     </label>
                     <div className={styles.field}>
                       <input
-                        type="number"
-                        value={cat.percentage}
-                        onChange={(e) => updateCustomCategory(cat.id, { percentage: parseFloat(e.target.value) || 0 })}
-                        min="0"
-                        step="0.5"
+                        type="text"
+                        inputMode="decimal"
+                        value={formatPercentageInput(cat.percentage)}
+                        onChange={(e) => handleCustomPercentageChange(cat.id, e.target.value)}
+                        onBlur={() => handleCustomPercentageBlur(cat.id, cat.percentage)}
+                        placeholder="0"
                       />
                       <span className={styles.suffix}>%</span>
                     </div>

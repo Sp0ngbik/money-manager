@@ -19,7 +19,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   salary,
 }) => {
   const { selectedCategory, setSelectedCategory, selectedCurrency, exchangeRates } = useBudget()
-  const isSelected = selectedCategory === categoryKey
+  const isSelected = selectedCategory.has(categoryKey as string)
 
   const formatCurrency = getFormatter(selectedCurrency)
   const color = categoryColors[categoryKey]
@@ -28,7 +28,13 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   const name = nameParts.join(' ')
 
   const handleClick = () => {
-    setSelectedCategory(isSelected ? null : categoryKey as string)
+    const newSelected = new Set(selectedCategory)
+    if (newSelected.has(categoryKey as string)) {
+      newSelected.delete(categoryKey as string)
+    } else {
+      newSelected.add(categoryKey as string)
+    }
+    setSelectedCategory(newSelected)
   }
 
   return (

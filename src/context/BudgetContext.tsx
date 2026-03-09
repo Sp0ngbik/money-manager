@@ -116,7 +116,7 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   const [expenses, setExpenses] = useState<MonthlyExpense[]>(initialState.expenses)
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Set<string>>(new Set())
   const [isEditing, setIsEditing] = useState(false)
   
   const [categoryConfigs, setCategoryConfigs] = useState<Record<string, CategoryConfig>>(initialState.categoryConfigs)
