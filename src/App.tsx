@@ -14,6 +14,7 @@ import {
   SummaryCards,
   MonthlyTracker,
   AtmMap,
+  AtmMapSkeleton,
   BankRatesTable,
 } from './components'
 import type { Category } from './types'
@@ -118,7 +119,7 @@ function AppContent() {
               )}
               {latitude && longitude && (
                 <>
-                  {atmsLoading && <p>Загрузка банкоматов...</p>}
+                  {atmsLoading && <AtmMapSkeleton />}
                   {!atmsLoading && (
                     <>
                       <AtmMap userLat={latitude} userLon={longitude} atms={atms} radius={radius} />

@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
-import { Icon, divIcon } from 'leaflet'
+import { Icon, divIcon, latLng, latLngBounds } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Atm } from '../../types'
 import styles from './AtmMap.module.scss'
@@ -12,14 +12,6 @@ interface AtmMapProps {
   userLon: number
   atms: Atm[]
   radius: number
-}
-
-// Определить zoom в зависимости от радиуса
-const getZoomByRadius = (radius: number): number => {
-  if (radius <= 2000) return 15 // 2 км
-  if (radius <= 5000) return 14 // 5 км
-  if (radius <= 10000) return 13 // 10 км
-  return 12 // 20 км
 }
 
 const userIcon = new Icon({
@@ -57,25 +49,69 @@ const createColoredAtmIcon = (color: string) => {
   })
 }
 
-// Компонент для управления zoom при изменении радиуса
-const ZoomController = ({ radius }: { radius: number }) => {
+// Компонент для автоматического подстраивания карты под круг
+const CircleBoundsController = ({
+  userLat,
+  userLon,
+  radius,
+}: {
+  userLat: number
+  userLon: number
+  radius: number
+}) => {
   const map = useMap()
 
   useEffect(() => {
-    const newZoom = getZoomByRadius(radius)
-    map.setZoom(newZoom)
-  }, [radius, map])
+    // Рассчитываем bounds для круга с отступами
+    // Добавляем 20% к радиусу для padding
+    const paddingRadius = radius * 1.2
+    
+    // Приблизительно: 1 градус = 111 км
+    const deltaLat = paddingRadius / 111000 // метры в градусы
+    const deltaLng = paddingRadius / (111000 * Math.cos((userLat * Math.PI) / 180))
+
+    const bounds = latLngBounds(
+      latLng(userLat - deltaLat, userLon - deltaLng),
+      latLng(userLat + deltaLat, userLon + deltaLng)
+    )
+
+    // Плавно перемещаем карту с анимацией 1.5 секунды
+    map.flyToBounds(bounds, {
+      duration: 1.5,
+      easeLinearity: 0.25,
+    })
+  }, [radius, userLat, userLon, map])
 
   return null
 }
 
 // Компонент кнопки возврата к местоположению
-const LocationButton = ({ userLat, userLon, radius }: { userLat: number; userLon: number; radius: number }) => {
+const LocationButton = ({
+  userLat,
+  userLon,
+  radius,
+}: {
+  userLat: number
+  userLon: number
+  radius: number
+}) => {
   const map = useMap()
 
   const handleClick = () => {
-    const zoom = getZoomByRadius(radius)
-    map.setView([userLat, userLon], zoom)
+    // Рассчитываем bounds как в CircleBoundsController
+    const paddingRadius = radius * 1.2
+    const deltaLat = paddingRadius / 111000
+    const deltaLng = paddingRadius / (111000 * Math.cos((userLat * Math.PI) / 180))
+
+    const bounds = latLngBounds(
+      latLng(userLat - deltaLat, userLon - deltaLng),
+      latLng(userLat + deltaLat, userLon + deltaLng)
+    )
+
+    map.flyToBounds(bounds, {
+      duration: 1,
+      easeLinearity: 0.25,
+    })
   }
 
   return (
@@ -91,15 +127,11 @@ const LocationButton = ({ userLat, userLon, radius }: { userLat: number; userLon
 
 // Создать ссылку на маршрут
 const createRouteUrl = (lat: number, lon: number): string => {
-  // Google Maps
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
 }
 
 export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
   const mapRef = useRef(null)
-  const initialZoom = getZoomByRadius(radius)
-
-  // Все банкоматы показываем синим цветом (убрали разделение по валютам)
   const atmColor = '#3b82f6'
 
   return (
@@ -107,7 +139,7 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
       <MapContainer
         ref={mapRef}
         center={[userLat, userLon]}
-        zoom={initialZoom}
+        zoom={15}
         className={styles.map}
       >
         <TileLayer
@@ -115,7 +147,11 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
           attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
 
-        <ZoomController radius={radius} />
+        <CircleBoundsController
+          userLat={userLat}
+          userLon={userLon}
+          radius={radius}
+        />
 
         <Marker position={[userLat, userLon]} icon={userIcon}>
           <Popup>Вы здесь</Popup>
@@ -154,7 +190,11 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
           </Marker>
         ))}
 
-        <LocationButton userLat={userLat} userLon={userLon} radius={radius} />
+        <LocationButton
+          userLat={userLat}
+          userLon={userLon}
+          radius={radius}
+        />
       </MapContainer>
     </div>
   )
