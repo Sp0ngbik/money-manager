@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import { Icon, divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -12,6 +12,14 @@ interface AtmMapProps {
   userLon: number
   atms: Atm[]
   radius: number
+}
+
+// Определить zoom в зависимости от радиуса
+const getZoomByRadius = (radius: number): number => {
+  if (radius <= 2000) return 15 // 2 км
+  if (radius <= 5000) return 14 // 5 км
+  if (radius <= 10000) return 13 // 10 км
+  return 12 // 20 км
 }
 
 const userIcon = new Icon({
@@ -49,12 +57,25 @@ const createColoredAtmIcon = (color: string) => {
   })
 }
 
+// Компонент для управления zoom при изменении радиуса
+const ZoomController = ({ radius }: { radius: number }) => {
+  const map = useMap()
+
+  useEffect(() => {
+    const newZoom = getZoomByRadius(radius)
+    map.setZoom(newZoom)
+  }, [radius, map])
+
+  return null
+}
+
 // Компонент кнопки возврата к местоположению
-const LocationButton = ({ userLat, userLon }: { userLat: number; userLon: number }) => {
+const LocationButton = ({ userLat, userLon, radius }: { userLat: number; userLon: number; radius: number }) => {
   const map = useMap()
 
   const handleClick = () => {
-    map.setView([userLat, userLon], 15)
+    const zoom = getZoomByRadius(radius)
+    map.setView([userLat, userLon], zoom)
   }
 
   return (
@@ -76,6 +97,7 @@ const createRouteUrl = (lat: number, lon: number): string => {
 
 export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
   const mapRef = useRef(null)
+  const initialZoom = getZoomByRadius(radius)
 
   // Все банкоматы показываем синим цветом (убрали разделение по валютам)
   const atmColor = '#3b82f6'
@@ -85,13 +107,15 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
       <MapContainer
         ref={mapRef}
         center={[userLat, userLon]}
-        zoom={15}
+        zoom={initialZoom}
         className={styles.map}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
+
+        <ZoomController radius={radius} />
 
         <Marker position={[userLat, userLon]} icon={userIcon}>
           <Popup>Вы здесь</Popup>
@@ -122,14 +146,15 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
                   rel="noopener noreferrer"
                   className={styles.routeButton}
                 >
-                  🚗 Проложить маршрут
+                  <span className={styles.routeIcon}>🚗</span>
+                  <span className={styles.routeText}>Проложить маршрут</span>
                 </a>
               </div>
             </Popup>
           </Marker>
         ))}
 
-        <LocationButton userLat={userLat} userLon={userLon} />
+        <LocationButton userLat={userLat} userLon={userLon} radius={radius} />
       </MapContainer>
     </div>
   )

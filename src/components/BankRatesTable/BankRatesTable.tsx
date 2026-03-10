@@ -17,23 +17,26 @@ interface BankWithRates {
     'BYN-RUB': number
     'RUB-BYN': number
   }
+  lastUpdated: Date
 }
 
 interface State {
   banks: BankWithRates[]
   loading: boolean
   error: string | null
+  lastUpdated: Date | null
 }
 
 type Action =
   | { type: 'LOADING' }
-  | { type: 'SUCCESS'; payload: BankWithRates[] }
+  | { type: 'SUCCESS'; payload: BankWithRates[]; lastUpdated: Date }
   | { type: 'ERROR'; payload: string }
 
 const initialState: State = {
   banks: [],
   loading: false,
   error: null,
+  lastUpdated: null,
 }
 
 function reducer(state: State, action: Action): State {
@@ -41,9 +44,14 @@ function reducer(state: State, action: Action): State {
     case 'LOADING':
       return { ...state, loading: true, error: null }
     case 'SUCCESS':
-      return { banks: action.payload, loading: false, error: null }
+      return {
+        banks: action.payload,
+        loading: false,
+        error: null,
+        lastUpdated: action.lastUpdated,
+      }
     case 'ERROR':
-      return { ...state, loading: false, error: action.payload }
+      return { ...state, loading: false, error: action.payload, lastUpdated: null }
     default:
       return state
   }
@@ -67,12 +75,19 @@ const formatRate = (rate: number): string => {
   return rate.toFixed(4)
 }
 
+const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const loadRates = useCallback(async () => {
     if (atms.length === 0) {
-      dispatch({ type: 'SUCCESS', payload: [] })
+      dispatch({ type: 'SUCCESS', payload: [], lastUpdated: new Date() })
       return
     }
 
@@ -81,6 +96,7 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
     try {
       const conversionRates = await fetchConversionRates()
       const uniqueBanks = getUniqueBanks(atms)
+      const now = new Date()
 
       const banksWithRates: BankWithRates[] = uniqueBanks.map((atm) => ({
         name: atm.operator || 'Банкомат',
@@ -91,16 +107,20 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
           'BYN-RUB': conversionRates['BYN-RUB'],
           'RUB-BYN': conversionRates['RUB-BYN'],
         },
+        lastUpdated: now,
       }))
 
-      dispatch({ type: 'SUCCESS', payload: banksWithRates })
+      dispatch({ type: 'SUCCESS', payload: banksWithRates, lastUpdated: now })
     } catch {
       dispatch({ type: 'ERROR', payload: 'Не удалось загрузить курсы валют' })
     }
   }, [atms])
 
   useEffect(() => {
-    loadRates()
+    const timer = setTimeout(() => {
+      loadRates()
+    }, 0)
+    return () => clearTimeout(timer)
   }, [loadRates])
 
   const radiusKm = radius / 1000
@@ -119,9 +139,16 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
 
   return (
     <div className={styles.container}>
-      <h3 className={styles.title}>
-        Курсы валют банков в радиусе {radiusKm} км (топ-{state.banks.length})
-      </h3>
+      <div className={styles.header}>
+        <h3 className={styles.title}>
+          Курсы валют банков в радиусе {radiusKm} км (топ-{state.banks.length})
+        </h3>
+        {state.lastUpdated && (
+          <div className={styles.lastUpdated}>
+            Обновлено: {formatTime(state.lastUpdated)}
+          </div>
+        )}
+      </div>
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>

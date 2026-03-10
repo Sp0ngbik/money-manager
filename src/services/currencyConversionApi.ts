@@ -57,13 +57,17 @@ const cacheRates = (rates: ConversionRates): void => {
 // Получить курс BYN из НБРБ
 const fetchBYNRate = async (): Promise<number> => {
   try {
+    console.log('[API] Fetching BYN rate from NBRB...')
     const response = await fetch('https://api.nbrb.by/exrates/rates/USD?parammode=2')
-    if (!response.ok) throw new Error('Failed to fetch BYN rate')
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const data = await response.json()
-    return data.Cur_OfficialRate
+    const rate = data.Cur_OfficialRate
+    console.log('[API] ✓ BYN rate fetched:', rate, 'BYN per 1 USD')
+    return rate
   } catch (error) {
-    console.warn('Failed to fetch BYN rate:', error)
+    console.error('[API] ✗ Failed to fetch BYN rate:', error)
+    console.warn('[API] Using fallback BYN rate: 3.25')
     return 3.25 // Fallback
   }
 }
@@ -71,13 +75,17 @@ const fetchBYNRate = async (): Promise<number> => {
 // Получить курс RUB из ЦБ РФ
 const fetchRUBRate = async (): Promise<number> => {
   try {
+    console.log('[API] Fetching RUB rate from CBR...')
     const response = await fetch('https://www.cbr-xml-daily.ru/daily_json.js')
-    if (!response.ok) throw new Error('Failed to fetch RUB rate')
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
     const data = await response.json()
-    return data.Valute.USD.Value
+    const rate = data.Valute.USD.Value
+    console.log('[API] ✓ RUB rate fetched:', rate, 'RUB per 1 USD')
+    return rate
   } catch (error) {
-    console.warn('Failed to fetch RUB rate:', error)
+    console.error('[API] ✗ Failed to fetch RUB rate:', error)
+    console.warn('[API] Using fallback RUB rate: 92.5')
     return 92.5 // Fallback
   }
 }

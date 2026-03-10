@@ -6,11 +6,29 @@
   border: 1px solid #2d2d44;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
 .title {
   font-size: 1.1rem;
   color: #eaeaea;
-  margin-bottom: 1rem;
-  text-align: center;
+  margin: 0;
+  text-align: left;
+}
+
+.lastUpdated {
+  font-size: 0.8rem;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .tableWrapper {
