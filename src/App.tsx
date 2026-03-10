@@ -164,3 +164,4 @@ function App() {
 export default App
 // Test
 // Test file for husky
+const x: any = 123
