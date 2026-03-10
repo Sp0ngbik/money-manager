@@ -14,6 +14,7 @@ import {
   SummaryCards,
   MonthlyTracker,
   AtmMap,
+  BankRatesTable,
 } from './components'
 import type { Category } from './types'
 import './index.scss'
@@ -27,7 +28,7 @@ const RADIUS_OPTIONS = [
 ]
 
 function AppContent() {
-  const { budget, percentages, effectiveSavings, selectedCurrency } = useBudget()
+  const { budget, percentages, effectiveSavings } = useBudget()
   const { latitude, longitude, loading: geoLoading, error: geoError } = useGeolocation()
   const [radius, setRadius] = useState(2000)
   const { atms, loading: atmsLoading } = useNearbyAtms(latitude, longitude, radius)
@@ -115,12 +116,8 @@ function AppContent() {
               {latitude && longitude && (
                 <>
                   {atmsLoading && <p>Загрузка банкоматов...</p>}
-                  <AtmMap
-                    userLat={latitude}
-                    userLon={longitude}
-                    atms={atms}
-                    selectedCurrency={selectedCurrency}
-                  />
+                  <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
+                  <BankRatesTable atms={atms} radius={radius} />
                   {!atmsLoading && atms.length === 0 && (
                     <p>Банкоматы не найдены в радиусе {selectedRadiusLabel}</p>
                   )}

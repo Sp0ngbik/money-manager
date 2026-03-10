@@ -1,8 +1,8 @@
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import { useRef } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import { Icon, divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { Atm, CurrencyCode } from '../../types'
-import { useAtmCurrencyConversion } from '../../hooks/useAtmCurrencyConversion'
+import type { Atm } from '../../types'
 import styles from './AtmMap.module.scss'
 
 import 'leaflet/dist/leaflet.css'
@@ -11,7 +11,6 @@ interface AtmMapProps {
   userLat: number
   userLon: number
   atms: Atm[]
-  selectedCurrency: CurrencyCode
 }
 
 const userIcon = new Icon({
@@ -49,20 +48,45 @@ const createColoredAtmIcon = (color: string) => {
   })
 }
 
-export const AtmMap = ({ userLat, userLon, atms, selectedCurrency }: AtmMapProps) => {
-  const { atmsWithConversion, loading: conversionLoading, error: conversionError } =
-    useAtmCurrencyConversion(atms, selectedCurrency)
+// Компонент кнопки возврата к местоположению
+const LocationButton = ({ userLat, userLon }: { userLat: number; userLon: number }) => {
+  const map = useMap()
+
+  const handleClick = () => {
+    map.setView([userLat, userLon], 15)
+  }
+
+  return (
+    <button
+      className={styles.locationButton}
+      onClick={handleClick}
+      title="Моё местоположение"
+    >
+      📍
+    </button>
+  )
+}
+
+// Создать ссылку на маршрут
+const createRouteUrl = (lat: number, lon: number): string => {
+  // Google Maps
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+}
+
+export const AtmMap = ({ userLat, userLon, atms }: AtmMapProps) => {
+  const mapRef = useRef(null)
+
+  // Все банкоматы показываем синим цветом (убрали разделение по валютам)
+  const atmColor = '#3b82f6'
 
   return (
     <div className={styles.mapContainer}>
-      {conversionLoading && (
-        <div className={styles.loadingOverlay}>Загрузка курсов валют...</div>
-      )}
-      {conversionError && (
-        <div className={styles.errorOverlay}>{conversionError}</div>
-      )}
-
-      <MapContainer center={[userLat, userLon]} zoom={15} className={styles.map}>
+      <MapContainer
+        ref={mapRef}
+        center={[userLat, userLon]}
+        zoom={15}
+        className={styles.map}
+      >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -78,49 +102,33 @@ export const AtmMap = ({ userLat, userLon, atms, selectedCurrency }: AtmMapProps
           pathOptions={{ fillOpacity: 0.1, color: 'blue' }}
         />
 
-        {atmsWithConversion.map((atm) => {
-          const supportedCount = atm.supportedCurrencies?.length || 0
-          const color = atm.supportedCurrencies?.includes(selectedCurrency)
-            ? '#10b981' // Зеленый - поддерживает текущую валюту
-            : supportedCount >= 2
-              ? '#f59e0b' // Желтый - поддерживает другие валюты
-              : '#ef4444' // Красный - мало валют
+        {atms.map((atm) => (
+          <Marker
+            key={atm.id}
+            position={[atm.lat, atm.lon]}
+            icon={createColoredAtmIcon(atmColor)}
+          >
+            <Popup>
+              <div className={styles.popup}>
+                <strong>{atm.operator || 'Банкомат'}</strong>
+                {atm.name && <div>{atm.name}</div>}
+                {atm.address && <div>{atm.address}</div>}
+                {atm.distance && <div>~{atm.distance}м</div>}
 
-          return (
-            <Marker
-              key={atm.id}
-              position={[atm.lat, atm.lon]}
-              icon={createColoredAtmIcon(color)}
-            >
-              <Popup>
-                <div className={styles.popup}>
-                  <strong>{atm.operator || 'Банкомат'}</strong>
-                  {atm.name && <div>{atm.name}</div>}
-                  {atm.address && <div>{atm.address}</div>}
-                  {atm.distance && <div>~{atm.distance}м</div>}
+                <a
+                  href={createRouteUrl(atm.lat, atm.lon)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.routeButton}
+                >
+                  🚗 Проложить маршрут
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
-                  <hr className={styles.divider} />
-
-                  <div className={styles.currencies}>
-                    <strong>Поддерживаемые валюты:</strong>
-                    <div>{atm.supportedCurrencies?.join(', ') || 'USD, BYN, RUB'}</div>
-                  </div>
-
-                  {atm.conversionRates && atm.conversionRates.length > 0 && (
-                    <div className={styles.conversionRates}>
-                      <strong>Курсы конверсии:</strong>
-                      {atm.conversionRates.map((rate) => (
-                        <div key={rate.pair} className={styles.rate}>
-                          {rate.label}: {rate.rate.toFixed(4)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          )
-        })}
+        <LocationButton userLat={userLat} userLon={userLon} />
       </MapContainer>
     </div>
   )
