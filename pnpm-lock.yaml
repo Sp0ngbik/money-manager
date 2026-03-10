@@ -58,6 +58,9 @@ devDependencies:
   sass:
     specifier: ^1.97.3
     version: 1.97.3
+  simple-git-hooks:
+    specifier: ^2.13.1
+    version: 2.13.1
   tsc-files:
     specifier: ^1.1.4
     version: 1.1.4(typescript@5.9.3)
@@ -4251,6 +4254,12 @@ packages:
   /signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
+    dev: true
+
+  /simple-git-hooks@2.13.1:
+    resolution: {integrity: sha512-WszCLXwT4h2k1ufIXAgsbiTOazqqevFCIncOuUBZJ91DdvWcC5+OFkluWRQPrcuSYd8fjq+o2y1QfWqYMoAToQ==}
+    hasBin: true
+    requiresBuild: true
     dev: true
 
   /slice-ansi@7.1.2:

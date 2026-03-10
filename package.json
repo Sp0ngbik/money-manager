@@ -13,7 +13,7 @@
     "deploy": "vercel --prod",
     "deploy:preview": "vercel",
     "vercel:link": "vercel link",
-    "prepare": "husky"
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
@@ -32,10 +32,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "husky": "^9.1.7",
     "lint-staged": "^16.3.3",
     "sass": "^1.97.3",
-    "tsc-files": "^1.1.4",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vercel": "^50.25.6",
@@ -44,10 +43,13 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
-      "bash -c 'tsc --noEmit'"
+      "tsc --noEmit"
     ],
     "*.{scss,css}": [
-      "bash -c 'echo \"Checking styles...\"'"
+      "echo 'Checking styles...'"
     ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
   }
 }
