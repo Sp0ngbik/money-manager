@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useCallback } from 'react'
-import { fetchConversionRates } from '../../services/currencyConversionApi'
+import { fetchConversionRates, getRateSource, type ConversionRates } from '../../services/currencyConversionApi'
 import type { Atm } from '../../types'
 import styles from './BankRatesTable.module.scss'
 
@@ -11,32 +11,26 @@ interface BankRatesTableProps {
 interface BankWithRates {
   name: string
   distance: number
-  rates: {
-    'BYN-USD': number
-    'USD-BYN': number
-    'BYN-RUB': number
-    'RUB-BYN': number
-  }
-  lastUpdated: Date
+  rates: ConversionRates
 }
 
 interface State {
   banks: BankWithRates[]
   loading: boolean
   error: string | null
-  lastUpdated: Date | null
+  ratesData: ConversionRates | null
 }
 
 type Action =
   | { type: 'LOADING' }
-  | { type: 'SUCCESS'; payload: BankWithRates[]; lastUpdated: Date }
+  | { type: 'SUCCESS'; payload: BankWithRates[]; rates: ConversionRates }
   | { type: 'ERROR'; payload: string }
 
 const initialState: State = {
   banks: [],
   loading: false,
   error: null,
-  lastUpdated: null,
+  ratesData: null,
 }
 
 function reducer(state: State, action: Action): State {
@@ -48,10 +42,10 @@ function reducer(state: State, action: Action): State {
         banks: action.payload,
         loading: false,
         error: null,
-        lastUpdated: action.lastUpdated,
+        ratesData: action.rates,
       }
     case 'ERROR':
-      return { ...state, loading: false, error: action.payload, lastUpdated: null }
+      return { ...state, loading: false, error: action.payload, ratesData: null }
     default:
       return state
   }
@@ -87,7 +81,7 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
 
   const loadRates = useCallback(async () => {
     if (atms.length === 0) {
-      dispatch({ type: 'SUCCESS', payload: [], lastUpdated: new Date() })
+      dispatch({ type: 'SUCCESS', payload: [], rates: {} as ConversionRates })
       return
     }
 
@@ -96,21 +90,14 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
     try {
       const conversionRates = await fetchConversionRates()
       const uniqueBanks = getUniqueBanks(atms)
-      const now = new Date()
 
       const banksWithRates: BankWithRates[] = uniqueBanks.map((atm) => ({
         name: atm.operator || 'Банкомат',
         distance: atm.distance || 0,
-        rates: {
-          'BYN-USD': conversionRates['BYN-USD'],
-          'USD-BYN': conversionRates['USD-BYN'],
-          'BYN-RUB': conversionRates['BYN-RUB'],
-          'RUB-BYN': conversionRates['RUB-BYN'],
-        },
-        lastUpdated: now,
+        rates: conversionRates,
       }))
 
-      dispatch({ type: 'SUCCESS', payload: banksWithRates, lastUpdated: now })
+      dispatch({ type: 'SUCCESS', payload: banksWithRates, rates: conversionRates })
     } catch {
       dispatch({ type: 'ERROR', payload: 'Не удалось загрузить курсы валют' })
     }
@@ -133,21 +120,33 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
     return <div className={styles.error}>{state.error}</div>
   }
 
-  if (state.banks.length === 0) {
+  if (state.banks.length === 0 || !state.ratesData) {
     return null
   }
+
+  const source = getRateSource(state.ratesData)
+  const lastUpdated = state.ratesData['USD-BYN'].lastUpdated
+  const isOfficial = state.ratesData['USD-BYN'].isOfficial
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h3 className={styles.title}>
-          Курсы валют банков в радиусе {radiusKm} км (топ-{state.banks.length})
-        </h3>
-        {state.lastUpdated && (
-          <div className={styles.lastUpdated}>
-            Обновлено: {formatTime(state.lastUpdated)}
+        <div className={styles.titleSection}>
+          <h3 className={styles.title}>
+            Курсы валют в радиусе {radiusKm} км
+          </h3>
+          <div className={styles.sourceInfo}>
+            <span className={isOfficial ? styles.sourceOfficial : styles.sourceFallback}>
+              {isOfficial ? '✓ ' : '⚠ '}
+              Источник: {source}
+            </span>
+            {lastUpdated && (
+              <span className={styles.lastUpdated}>
+                Обновлено: {formatTime(lastUpdated)}
+              </span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div className={styles.tableWrapper}>
@@ -155,22 +154,22 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
           <thead>
             <tr>
               <th>Банк</th>
-              <th>Расстояние</th>
-              <th>BYN→USD</th>
-              <th>USD→BYN</th>
-              <th>BYN→RUB</th>
-              <th>RUB→BYN</th>
+              <th className={styles.colDistance}>Расст.</th>
+              <th className={styles.colRate}>BYN→USD</th>
+              <th className={styles.colRate}>USD→BYN</th>
+              <th className={styles.colRate}>BYN→RUB</th>
+              <th className={styles.colRate}>RUB→BYN</th>
             </tr>
           </thead>
           <tbody>
             {state.banks.map((bank) => (
               <tr key={bank.name}>
                 <td className={styles.bankName}>{bank.name}</td>
-                <td>{bank.distance}м</td>
-                <td className={styles.rate}>{formatRate(bank.rates['BYN-USD'])}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['USD-BYN'])}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['BYN-RUB'])}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['RUB-BYN'])}</td>
+                <td className={styles.colDistance}>{bank.distance}м</td>
+                <td className={styles.rate}>{formatRate(bank.rates['BYN-USD'].rate)}</td>
+                <td className={styles.rate}>{formatRate(bank.rates['USD-BYN'].rate)}</td>
+                <td className={styles.rate}>{formatRate(bank.rates['BYN-RUB'].rate)}</td>
+                <td className={styles.rate}>{formatRate(bank.rates['RUB-BYN'].rate)}</td>
               </tr>
             ))}
           </tbody>
