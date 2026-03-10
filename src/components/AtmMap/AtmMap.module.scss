@@ -5,6 +5,7 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
 
   @media (min-width: 768px) {
     max-height: 600px;
@@ -16,9 +17,31 @@
   width: 100%;
 }
 
+.loadingOverlay,
+.errorOverlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.loadingOverlay {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.errorOverlay {
+  background-color: #ef4444;
+  color: white;
+}
+
 .popup {
   font-size: 14px;
   line-height: 1.4;
+  min-width: 200px;
 
   strong {
     display: block;
@@ -28,5 +51,50 @@
 
   div {
     margin-bottom: 2px;
+  }
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 8px 0;
+}
+
+.currencies {
+  margin-bottom: 8px;
+
+  strong {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  div {
+    color: #10b981;
+    font-weight: 500;
+  }
+}
+
+.conversionRates {
+  background-color: #f3f4f6;
+  padding: 8px;
+  border-radius: 6px;
+  margin-top: 8px;
+
+  strong {
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+}
+
+.rate {
+  font-family: monospace;
+  font-size: 12px;
+  color: #6b7280;
+  padding: 2px 0;
+  border-bottom: 1px dashed #e5e7eb;
+
+  &:last-child {
+    border-bottom: none;
   }
 }

@@ -1,3 +1,5 @@
+import type { CurrencyCode } from './index'
+
 export interface Atm {
   id: string
   lat: number
@@ -6,4 +8,5 @@ export interface Atm {
   operator?: string
   address?: string
   distance?: number
+  supportedCurrencies?: CurrencyCode[] // Валюты, поддерживаемые банкоматом
 }

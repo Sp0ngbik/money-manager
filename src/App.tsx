@@ -19,7 +19,7 @@ import './index.scss'
 import styles from './App.module.scss'
 
 function AppContent() {
-  const { budget, percentages, effectiveSavings } = useBudget()
+  const { budget, percentages, effectiveSavings, selectedCurrency } = useBudget()
   const { latitude, longitude, loading: geoLoading, error: geoError } = useGeolocation()
   const { atms, loading: atmsLoading } = useNearbyAtms(latitude, longitude)
 
@@ -86,7 +86,7 @@ function AppContent() {
               {latitude && longitude && (
                 <>
                   {atmsLoading && <p>Загрузка банкоматов...</p>}
-                  <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
+                  <AtmMap userLat={latitude} userLon={longitude} atms={atms} selectedCurrency={selectedCurrency} />
                   {!atmsLoading && atms.length === 0 && (
                     <p>Банкоматы не найдены в радиусе 2 км</p>
                   )}
