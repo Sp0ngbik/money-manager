@@ -25,14 +25,13 @@ const RADIUS_OPTIONS = [
   { value: 2000, label: '2 км' },
   { value: 5000, label: '5 км' },
   { value: 10000, label: '10 км' },
-  { value: 20000, label: '20 км' },
 ]
 
 function AppContent() {
   const { budget, percentages, effectiveSavings } = useBudget()
   const { latitude, longitude, loading: geoLoading, error: geoError } = useGeolocation()
   const [radius, setRadius] = useState(2000)
-  const { atms, loading: atmsLoading } = useNearbyAtms(latitude, longitude, radius)
+  const { atms, loading: atmsLoading, error: atmsError, isRateLimited, reload: reloadAtms } = useNearbyAtms(latitude, longitude, radius)
 
   const selectedRadiusLabel = RADIUS_OPTIONS.find((opt) => opt.value === radius)?.label || '2 км'
 
@@ -120,13 +119,26 @@ function AppContent() {
               {latitude && longitude && (
                 <>
                   {atmsLoading && <AtmMapSkeleton />}
-                  {!atmsLoading && (
+                  {!atmsLoading && atmsError && (
+                    <div className={styles.errorContainer}>
+                      <p className={styles.error}>{atmsError}</p>
+                      {isRateLimited && (
+                        <button 
+                          className={styles.retryButton}
+                          onClick={reloadAtms}
+                        >
+                          🔄 Попробовать снова
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!atmsLoading && !atmsError && (
                     <>
                       <AtmMap userLat={latitude} userLon={longitude} atms={atms} radius={radius} />
                       <BankRatesTable atms={atms} radius={radius} />
                     </>
                   )}
-                  {!atmsLoading && atms.length === 0 && (
+                  {!atmsLoading && !atmsError && atms.length === 0 && (
                     <p>Банкоматы не найдены в радиусе {selectedRadiusLabel}</p>
                   )}
                 </>
