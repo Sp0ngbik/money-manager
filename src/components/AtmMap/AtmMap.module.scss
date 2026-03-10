@@ -152,11 +152,6 @@
   letter-spacing: 0.5px;
 }
 
-.routeText {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  letter-spacing: 0.3px;
-}
-
 // Стили для leaflet popup на мобильной версии
 @media (max-width: 768px) {
   :global(.leaflet-popup) {
@@ -211,10 +206,4 @@
     color: #ffffff;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
   }
-}
-}
-
-.routeText {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  letter-spacing: 0.3px;
 }
