@@ -20,6 +20,16 @@ export interface Category {
   [key: CategoryKey]: number
 }
 
+export interface Atm {
+  id: number
+  lat: number
+  ion: number
+  name?: string
+  operator?: string
+  address?: string
+  distance?: number
+}
+
 export interface CustomCategoryBudget {
   id: string
   name: string

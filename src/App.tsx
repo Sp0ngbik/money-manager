@@ -1,5 +1,7 @@
 import { BudgetProvider } from './context/BudgetContext'
 import { useBudget } from './context/useBudget'
+import { useGeolocation } from './hooks/useGeolocation'
+import { useNearbyAtms } from './hooks/useNearbyAtms'
 import {
   Header,
   Footer,
@@ -10,6 +12,7 @@ import {
   BudgetChart,
   SummaryCards,
   MonthlyTracker,
+  AtmMap,
 } from './components'
 import type { Category } from './types'
 import './index.scss'
@@ -17,6 +20,8 @@ import styles from './App.module.scss'
 
 function AppContent() {
   const { budget, percentages, effectiveSavings } = useBudget()
+  const { latitude, longitude, loading: geoLoading, error: geoError } = useGeolocation()
+  const { atms, loading: atmsLoading } = useNearbyAtms(latitude, longitude)
 
   return (
     <div className={styles.app}>
@@ -70,6 +75,24 @@ function AppContent() {
             </section>
 
             <MonthlyTracker />
+
+            {/* Карта банкоматов */}
+            <section className={styles.card}>
+              <h2 className={styles.sectionTitle}>🏧 Банкоматы рядом</h2>
+              {geoLoading && <p>Определение местоположения...</p>}
+              {!geoLoading && !latitude && !longitude && geoError && (
+                <p className={styles.error}>{geoError}</p>
+              )}
+              {latitude && longitude && (
+                <>
+                  {atmsLoading && <p>Загрузка банкоматов...</p>}
+                  <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
+                  {!atmsLoading && atms.length === 0 && (
+                    <p>Банкоматы не найдены в радиусе 2 км</p>
+                  )}
+                </>
+              )}
+            </section>
           </section>
         )}
       </main>

@@ -1,0 +1,32 @@
+.mapContainer {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 70vh;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  @media (min-width: 768px) {
+    max-height: 600px;
+  }
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+}
+
+.popup {
+  font-size: 14px;
+  line-height: 1.4;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  div {
+    margin-bottom: 2px;
+  }
+}
