@@ -54,6 +54,53 @@
   }
 }
 
+.atmHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.radiusSelector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  label {
+    font-size: 0.9rem;
+    color: #a0a0a0;
+  }
+}
+
+.select {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #2d2d44;
+  border-radius: 8px;
+  background-color: #1e2a4a;
+  color: #eaeaea;
+  cursor: pointer;
+  min-width: 100px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: #4a5568;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+}
+
 @media (max-width: 768px) {
   .main {
     padding: 0 0.75rem;

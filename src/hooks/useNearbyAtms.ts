@@ -1,4 +1,4 @@
-import { useEffect, useRef, useReducer } from 'react'
+import { useEffect, useRef, useReducer, useCallback } from 'react'
 import type { Atm } from '../types/atm'
 import { fetchNearbyAtms } from '../services/atmApi'
 
@@ -37,38 +37,44 @@ function reducer(state: UseNearbyAtmsState, action: Action): UseNearbyAtmsState 
 
 export const useNearbyAtms = (
   latitude: number | null,
-  longitude: number | null
-): UseNearbyAtmsState => {
+  longitude: number | null,
+  radius: number = 2000
+): UseNearbyAtmsState & { reload: () => void } => {
   const [state, dispatch] = useReducer(reducer, initialState)
-  const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null)
+  const lastParamsRef = useRef<{ lat: number; lon: number; radius: number } | null>(null)
 
-  useEffect(() => {
+  const loadAtms = useCallback(() => {
     if (latitude === null || longitude === null) {
       dispatch({ type: 'RESET' })
       return
     }
 
-    // Проверяем, изменились ли координаты
+    // Проверяем, изменились ли параметры
     if (
-      lastCoordsRef.current &&
-      lastCoordsRef.current.lat === latitude &&
-      lastCoordsRef.current.lon === longitude
+      lastParamsRef.current &&
+      lastParamsRef.current.lat === latitude &&
+      lastParamsRef.current.lon === longitude &&
+      lastParamsRef.current.radius === radius
     ) {
       return
     }
 
-    lastCoordsRef.current = { lat: latitude, lon: longitude }
+    lastParamsRef.current = { lat: latitude, lon: longitude, radius }
 
     dispatch({ type: 'LOADING' })
 
-    fetchNearbyAtms(latitude, longitude)
+    fetchNearbyAtms(latitude, longitude, radius)
       .then((atms) => {
         dispatch({ type: 'SUCCESS', payload: atms })
       })
       .catch(() => {
         dispatch({ type: 'ERROR', payload: 'Не удалось загрузить банкоматы' })
       })
-  }, [latitude, longitude])
+  }, [latitude, longitude, radius])
 
-  return state
+  useEffect(() => {
+    loadAtms()
+  }, [loadAtms])
+
+  return { ...state, reload: loadAtms }
 }

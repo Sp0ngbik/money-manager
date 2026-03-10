@@ -120,29 +120,27 @@ export const useAtmCurrencyConversion = (
     try {
       const rates = await fetchConversionRates()
 
-      // Добавляем моковые валюты и курсы конверсии к каждому банкомату
+      // Добавляем моковые валюты и актуальные курсы конверсии к каждому банкомату
       const atmsWithConversion: AtmWithConversion[] = atms.map((atm) => {
         const supportedCurrencies = getMockSupportedCurrencies(atm.operator)
 
-        // Формируем пары конверсии в зависимости от выбранной валюты
-        let conversionRates: Array<{ pair: string; rate: number; label: string }> = []
+        // Формируем актуальные пары конверсии только для валют, поддерживаемых банкоматом
+        const conversionRates: Array<{ pair: string; rate: number; label: string }> = []
 
-        if (selectedCurrency === 'BYN') {
-          conversionRates = [
-            { pair: 'BYN-USD', rate: rates['BYN-USD'], label: 'BYN → USD' },
-            { pair: 'BYN-RUB', rate: rates['BYN-RUB'], label: 'BYN → RUB' },
-          ]
-        } else if (selectedCurrency === 'RUB') {
-          conversionRates = [
-            { pair: 'RUB-BYN', rate: rates['RUB-BYN'], label: 'RUB → BYN' },
-            { pair: 'RUB-USD', rate: rates['RUB-USD'], label: 'RUB → USD' },
-          ]
-        } else {
-          conversionRates = [
-            { pair: 'USD-BYN', rate: rates['USD-BYN'], label: 'USD → BYN' },
-            { pair: 'USD-RUB', rate: rates['USD-RUB'], label: 'USD → RUB' },
-          ]
-        }
+        // Для каждой поддерживаемой валюты (кроме выбранной) добавляем конверсию
+        supportedCurrencies.forEach((currency) => {
+          if (currency !== selectedCurrency) {
+            const pairKey = `${selectedCurrency}-${currency}` as keyof ConversionRates
+            const rate = rates[pairKey]
+            if (typeof rate === 'number') {
+              conversionRates.push({
+                pair: pairKey,
+                rate,
+                label: `${selectedCurrency} → ${currency}`,
+              })
+            }
+          }
+        })
 
         return {
           ...atm,
