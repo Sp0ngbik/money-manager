@@ -1,0 +1,9 @@
+{
+  "*.{ts,tsx}": [
+    "eslint --fix",
+    "tsc-files --noEmit"
+  ],
+  "*.{scss,css}": [
+    "echo 'Checking styles...'"
+  ]
+}
