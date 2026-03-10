@@ -111,13 +111,20 @@ function AppContent() {
 
               {geoLoading && <p>Определение местоположения...</p>}
               {!geoLoading && !latitude && !longitude && geoError && (
-                <p className={styles.error}>{geoError}</p>
+                <>
+                  <p className={styles.error}>{geoError}</p>
+                  <p className={styles.hint}>Разрешите доступ к геолокации в настройках браузера, либо проверьте банкоматы вручную.</p>
+                </>
               )}
               {latitude && longitude && (
                 <>
                   {atmsLoading && <p>Загрузка банкоматов...</p>}
-                  <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
-                  <BankRatesTable atms={atms} radius={radius} />
+                  {!atmsLoading && (
+                    <>
+                      <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
+                      <BankRatesTable atms={atms} radius={radius} />
+                    </>
+                  )}
                   {!atmsLoading && atms.length === 0 && (
                     <p>Банкоматы не найдены в радиусе {selectedRadiusLabel}</p>
                   )}

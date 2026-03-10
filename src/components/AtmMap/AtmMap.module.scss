@@ -17,6 +17,17 @@
   width: 100%;
 }
 
+// Скрыть логотип и attribution Leaflet
+:global(.leaflet-control-attribution) {
+  display: none !important;
+}
+
+:global(.leaflet-control-container) {
+  .leaflet-bottom.leaflet-right {
+    display: none !important;
+  }
+}
+
 // Кнопка моего местоположения
 .locationButton {
   position: absolute;

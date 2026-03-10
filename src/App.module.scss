@@ -36,6 +36,17 @@
   color: #eaeaea;
 }
 
+.error {
+  color: #ef4444;
+  margin-bottom: 0.5rem;
+}
+
+.hint {
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
 .categoriesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
