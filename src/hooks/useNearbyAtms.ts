@@ -65,7 +65,12 @@ export const useNearbyAtms = (
 
     fetchNearbyAtms(latitude, longitude, radius)
       .then((atms) => {
-        dispatch({ type: 'SUCCESS', payload: atms })
+        // Фильтруем банкоматы, оставляя только те, что в пределах радиуса
+        const filteredAtms = atms.filter((atm) => {
+          const distance = atm.distance || 0
+          return distance <= radius
+        })
+        dispatch({ type: 'SUCCESS', payload: filteredAtms })
       })
       .catch(() => {
         dispatch({ type: 'ERROR', payload: 'Не удалось загрузить банкоматы' })
