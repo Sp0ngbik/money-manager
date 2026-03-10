@@ -111,7 +111,7 @@ export const useNearbyAtms = (
       clearTimeout(debounceTimerRef.current)
     }
 
-    // Debounce: ждем 1.5 секунды после последнего изменения
+    // Debounce: ждем 500 мс после последнего изменения (быстрая реакция + защита API)
     debounceTimerRef.current = setTimeout(async () => {
       // Отменяем предыдущий запрос если он есть
       if (abortControllerRef.current) {
@@ -167,7 +167,7 @@ export const useNearbyAtms = (
       } finally {
         isLoadingRef.current = false
       }
-    }, 1500) // 1.5 секунды debounce
+    }, 500) // 500 мс debounce (быстрая реакция + защита API)
 
     // Cleanup для debounce timer
     return () => {
