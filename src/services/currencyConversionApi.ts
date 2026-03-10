@@ -1,7 +1,7 @@
 import type { CurrencyCode } from '../types'
 
 const CACHE_KEY = 'currencyConversionCache'
-const CACHE_DURATION = 1000 * 60 * 60 * 24 // 24 часа
+const CACHE_DURATION = 1000 * 60 * 60 // 1 час (было 24 часа)
 
 export interface ConversionRates {
   'BYN-USD': number

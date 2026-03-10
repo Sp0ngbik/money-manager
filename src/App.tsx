@@ -121,7 +121,7 @@ function AppContent() {
                   {atmsLoading && <p>Загрузка банкоматов...</p>}
                   {!atmsLoading && (
                     <>
-                      <AtmMap userLat={latitude} userLon={longitude} atms={atms} />
+                      <AtmMap userLat={latitude} userLon={longitude} atms={atms} radius={radius} />
                       <BankRatesTable atms={atms} radius={radius} />
                     </>
                   )}

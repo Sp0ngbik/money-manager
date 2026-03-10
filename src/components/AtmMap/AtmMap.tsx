@@ -11,6 +11,7 @@ interface AtmMapProps {
   userLat: number
   userLon: number
   atms: Atm[]
+  radius: number
 }
 
 const userIcon = new Icon({
@@ -73,7 +74,7 @@ const createRouteUrl = (lat: number, lon: number): string => {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
 }
 
-export const AtmMap = ({ userLat, userLon, atms }: AtmMapProps) => {
+export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
   const mapRef = useRef(null)
 
   // Все банкоматы показываем синим цветом (убрали разделение по валютам)
@@ -98,7 +99,7 @@ export const AtmMap = ({ userLat, userLon, atms }: AtmMapProps) => {
 
         <Circle
           center={[userLat, userLon]}
-          radius={2000}
+          radius={radius}
           pathOptions={{ fillOpacity: 0.1, color: 'blue' }}
         />
 
