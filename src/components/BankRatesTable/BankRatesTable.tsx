@@ -1,5 +1,10 @@
 import { useEffect, useReducer, useCallback } from 'react'
-import { fetchConversionRates, getRateSource, type ConversionRates } from '../../services/currencyConversionApi'
+import {
+  fetchConversionRates,
+  getBankRates,
+  getRateSource,
+  type ConversionRates,
+} from '../../services/currencyConversionApi'
 import type { Atm } from '../../types'
 import styles from './BankRatesTable.module.scss'
 
@@ -88,16 +93,24 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
     dispatch({ type: 'LOADING' })
 
     try {
-      const conversionRates = await fetchConversionRates()
+      // Получаем базовые курсы
+      const baseRates = await fetchConversionRates()
       const uniqueBanks = getUniqueBanks(atms)
 
-      const banksWithRates: BankWithRates[] = uniqueBanks.map((atm) => ({
-        name: atm.operator || 'Банкомат',
-        distance: atm.distance || 0,
-        rates: conversionRates,
-      }))
+      // Для каждого банка получаем его курсы
+      const banksWithRates: BankWithRates[] = await Promise.all(
+        uniqueBanks.map(async (atm) => {
+          const bankName = atm.operator || 'Банкомат'
+          const rates = await getBankRates(bankName)
+          return {
+            name: bankName,
+            distance: atm.distance || 0,
+            rates,
+          }
+        })
+      )
 
-      dispatch({ type: 'SUCCESS', payload: banksWithRates, rates: conversionRates })
+      dispatch({ type: 'SUCCESS', payload: banksWithRates, rates: baseRates })
     } catch {
       dispatch({ type: 'ERROR', payload: 'Не удалось загрузить курсы валют' })
     }
@@ -155,10 +168,10 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
             <tr>
               <th>Банк</th>
               <th className={styles.colDistance}>Расст.</th>
-              <th className={styles.colRate}>BYN→USD</th>
-              <th className={styles.colRate}>USD→BYN</th>
-              <th className={styles.colRate}>BYN→RUB</th>
-              <th className={styles.colRate}>RUB→BYN</th>
+              <th className={`${styles.colRate} ${styles.colBynUsd}`}>BYN→USD</th>
+              <th className={`${styles.colRate} ${styles.colUsdByn}`}>USD→BYN</th>
+              <th className={`${styles.colRate} ${styles.colBynRub}`}>BYN→RUB</th>
+              <th className={`${styles.colRate} ${styles.colRubByn}`}>RUB→BYN</th>
             </tr>
           </thead>
           <tbody>
@@ -166,10 +179,10 @@ export const BankRatesTable = ({ atms, radius }: BankRatesTableProps) => {
               <tr key={bank.name}>
                 <td className={styles.bankName}>{bank.name}</td>
                 <td className={styles.colDistance}>{bank.distance}м</td>
-                <td className={styles.rate}>{formatRate(bank.rates['BYN-USD'].rate)}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['USD-BYN'].rate)}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['BYN-RUB'].rate)}</td>
-                <td className={styles.rate}>{formatRate(bank.rates['RUB-BYN'].rate)}</td>
+                <td className={`${styles.rate} ${styles.rateBynUsd}`}>{formatRate(bank.rates['BYN-USD'].rate)}</td>
+                <td className={`${styles.rate} ${styles.rateUsdByn}`}>{formatRate(bank.rates['USD-BYN'].rate)}</td>
+                <td className={`${styles.rate} ${styles.rateBynRub}`}>{formatRate(bank.rates['BYN-RUB'].rate)}</td>
+                <td className={`${styles.rate} ${styles.rateRubByn}`}>{formatRate(bank.rates['RUB-BYN'].rate)}</td>
               </tr>
             ))}
           </tbody>

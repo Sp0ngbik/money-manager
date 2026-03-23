@@ -1,8 +1,9 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import { Icon, divIcon, latLng, latLngBounds } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Atm } from '../../types'
+import { getBankRates, type ConversionRates } from '../../services/currencyConversionApi'
 import styles from './AtmMap.module.scss'
 
 import 'leaflet/dist/leaflet.css'
@@ -13,6 +14,10 @@ interface AtmMapProps {
   atms: Atm[]
   radius: number
 }
+
+// Кэш для курсов банков
+const ratesCache = new Map<string, { rates: ConversionRates; timestamp: number }>()
+const RATES_CACHE_DURATION = 1000 * 60 * 5 // 5 минут
 
 const userIcon = new Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
@@ -62,12 +67,8 @@ const CircleBoundsController = ({
   const map = useMap()
 
   useEffect(() => {
-    // Рассчитываем bounds для круга с отступами
-    // Добавляем 20% к радиусу для padding
     const paddingRadius = radius * 1.2
-    
-    // Приблизительно: 1 градус = 111 км
-    const deltaLat = paddingRadius / 111000 // метры в градусы
+    const deltaLat = paddingRadius / 111000
     const deltaLng = paddingRadius / (111000 * Math.cos((userLat * Math.PI) / 180))
 
     const bounds = latLngBounds(
@@ -75,7 +76,6 @@ const CircleBoundsController = ({
       latLng(userLat + deltaLat, userLon + deltaLng)
     )
 
-    // Плавно перемещаем карту с анимацией 1.5 секунды
     map.flyToBounds(bounds, {
       duration: 1.5,
       easeLinearity: 0.25,
@@ -98,7 +98,6 @@ const LocationButton = ({
   const map = useMap()
 
   const handleClick = () => {
-    // Рассчитываем bounds как в CircleBoundsController
     const paddingRadius = radius * 1.2
     const deltaLat = paddingRadius / 111000
     const deltaLng = paddingRadius / (111000 * Math.cos((userLat * Math.PI) / 180))
@@ -128,6 +127,134 @@ const LocationButton = ({
 // Создать ссылку на маршрут
 const createRouteUrl = (lat: number, lon: number): string => {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`
+}
+
+// Хук для определения мобильной версии
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  return isMobile
+}
+
+// Компонент popup с курсами валют
+const AtmPopup = ({ atm }: { atm: Atm }) => {
+  const [rates, setRates] = useState<ConversionRates | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isMobile = useIsMobile()
+
+  useEffect(() => {
+    const loadRates = async () => {
+      if (!atm.operator) {
+        setLoading(false)
+        return
+      }
+
+      // Проверяем кэш
+      const cached = ratesCache.get(atm.operator)
+      if (cached && Date.now() - cached.timestamp < RATES_CACHE_DURATION) {
+        setRates(cached.rates)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const bankRates = await getBankRates(atm.operator)
+        ratesCache.set(atm.operator, { rates: bankRates, timestamp: Date.now() })
+        setRates(bankRates)
+      } catch (error) {
+        console.error('Error loading rates for popup:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadRates()
+  }, [atm.operator])
+
+  // Компактный вид для мобильной версии
+  if (isMobile && !isExpanded) {
+    return (
+      <div className={styles.popupCompact}>
+        <div className={styles.popupHeader}>
+          <strong>{atm.operator || 'Банкомат'}</strong>
+          {atm.distance && <span className={styles.distance}>~{atm.distance}м</span>}
+        </div>
+        <button 
+          className={styles.expandButton}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(true)
+          }}
+        >
+          Подробнее →
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.popup}>
+      {isMobile && (
+        <button 
+          className={styles.collapseButton}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(false)
+          }}
+        >
+          ← Скрыть
+        </button>
+      )}
+      <strong>{atm.operator || 'Банкомат'}</strong>
+      {atm.name && <div>{atm.name}</div>}
+      {atm.address && <div>{atm.address}</div>}
+      {atm.distance && <div>~{atm.distance}м</div>}
+
+      {/* Курсы валют */}
+      <div className={styles.ratesSection}>
+        <div className={styles.ratesTitle}>💱 Курсы валют</div>
+        {loading ? (
+          <div className={styles.ratesLoading}>Загрузка...</div>
+        ) : rates ? (
+          <div className={styles.ratesList}>
+            <div className={styles.rateItem}>
+              <span className={styles.rateLabel}>USD → BYN:</span>
+              <span className={styles.rateValue}>{rates['USD-BYN'].rate.toFixed(3)}</span>
+            </div>
+            <div className={styles.rateItem}>
+              <span className={styles.rateLabel}>USD → RUB:</span>
+              <span className={styles.rateValue}>{rates['USD-RUB'].rate.toFixed(2)}</span>
+            </div>
+            <div className={styles.rateSource}>
+              Источник: {rates['USD-BYN'].source}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.noRates}>Нет данных о курсах</div>
+        )}
+      </div>
+
+      <a
+        href={createRouteUrl(atm.lat, atm.lon)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={styles.routeButton}
+      >
+        <span className={styles.routeIcon}>🚗</span>
+        <span className={styles.routeText}>Проложить маршрут</span>
+      </a>
+    </div>
+  )
 }
 
 export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
@@ -170,22 +297,7 @@ export const AtmMap = ({ userLat, userLon, atms, radius }: AtmMapProps) => {
             icon={createColoredAtmIcon(atmColor)}
           >
             <Popup>
-              <div className={styles.popup}>
-                <strong>{atm.operator || 'Банкомат'}</strong>
-                {atm.name && <div>{atm.name}</div>}
-                {atm.address && <div>{atm.address}</div>}
-                {atm.distance && <div>~{atm.distance}м</div>}
-
-                <a
-                  href={createRouteUrl(atm.lat, atm.lon)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.routeButton}
-                >
-                  <span className={styles.routeIcon}>🚗</span>
-                  <span className={styles.routeText}>Проложить маршрут</span>
-                </a>
-              </div>
+              <AtmPopup atm={atm} />
             </Popup>
           </Marker>
         ))}

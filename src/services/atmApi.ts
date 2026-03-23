@@ -77,7 +77,11 @@ export const fetchNearbyAtms = async (
 ): Promise<Atm[]> => {
   const query = `
     [out:json];
-    node["amenity"="atm"](around:${radius},${lat},${lon});
+    (
+      node["amenity"="atm"](around:${radius},${lat},${lon});
+      node["amenity"="bank"](around:${radius},${lat},${lon});
+      node["atm"="yes"](around:${radius},${lat},${lon});
+    );
     out body;
   `
 
@@ -122,7 +126,6 @@ export const fetchNearbyAtms = async (
     return sortedAtms
   } catch (error) {
     console.error('[ATM API] Error fetching ATMs:', error)
-    // Возвращаем пустой массив вместо ошибки, чтобы не ломать UI
-    return []
+    throw error
   }
 }

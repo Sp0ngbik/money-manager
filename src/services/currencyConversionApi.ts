@@ -1,8 +1,6 @@
 import type { CurrencyCode } from '../types'
 
-const CACHE_KEY = 'currencyConversionCache_v2'
-const CACHE_DURATION = 1000 * 60 * 5 // 5 минут для более актуальных данных
-
+// Типы для курсов валют
 export interface ConversionRate {
   rate: number
   source: string
@@ -19,17 +17,37 @@ export interface ConversionRates {
   'RUB-USD': ConversionRate
 }
 
-interface CacheData {
-  rates: ConversionRates
-  timestamp: number
+// Типы для API Тинькофф
+interface TinkoffRate {
+  category: string
+  fromCurrency: {
+    code: number
+    name: string
+    strCode: string
+  }
+  toCurrency: {
+    code: number
+    name: string
+    strCode: string
+  }
+  buy: number
+  sell: number
 }
 
-// Источники данных
-const SOURCES = {
-  NBRB: 'НБРБ (Нацбанк РБ)',
-  CBR: 'ЦБ РФ',
-  FALLBACK: 'Fallback (устаревшие данные)',
+interface TinkoffResponse {
+  trackingId: string
+  resultCode: string
+  payload: {
+    lastUpdate: {
+      milliseconds: number
+    }
+    rates: TinkoffRate[]
+  }
 }
+
+// Кэш
+const CACHE_KEY = 'currencyConversionCache_v2'
+const CACHE_DURATION = 1000 * 60 * 30 // 30 минут
 
 // Получить кэшированные курсы
 const getCachedRates = (): ConversionRates | null => {
@@ -37,7 +55,7 @@ const getCachedRates = (): ConversionRates | null => {
     const cached = localStorage.getItem(CACHE_KEY)
     if (!cached) return null
 
-    const data: CacheData = JSON.parse(cached)
+    const data = JSON.parse(cached)
     const now = Date.now()
 
     if (now - data.timestamp > CACHE_DURATION) {
@@ -61,118 +79,195 @@ const getCachedRates = (): ConversionRates | null => {
 // Сохранить курсы в кэш
 const cacheRates = (rates: ConversionRates): void => {
   try {
-    const data: CacheData = {
-      rates,
-      timestamp: Date.now(),
-    }
+    const data = { rates, timestamp: Date.now() }
     localStorage.setItem(CACHE_KEY, JSON.stringify(data))
   } catch {
     // Ignore localStorage errors
   }
 }
 
-// Retry logic для fetch
-const fetchWithRetry = async (url: string, retries = 3, delay = 1000): Promise<Response> => {
+// Получить курсы от Тинькофф
+const fetchTinkoffRates = async (): Promise<Partial<ConversionRates> | null> => {
   try {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return response
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`[API] Retrying ${url}... (${retries} attempts left)`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-      return fetchWithRetry(url, retries - 1, delay * 2)
+    const response = await fetch('https://www.tinkoff.ru/api/v1/currency_rates/')
+    if (!response.ok) throw new Error('Tinkoff API error')
+
+    const data: TinkoffResponse = await response.json()
+    const rates = data.payload.rates
+
+    // Находим курсы для ATM операций
+    const usdToRub = rates.find(
+      (r) => r.category === 'ATMCashoutRateGroup' && r.fromCurrency.name === 'USD' && r.toCurrency.name === 'RUB'
+    )
+
+    if (!usdToRub) return null
+
+    return {
+      'USD-RUB': {
+        rate: usdToRub.sell, // Продажа USD (покупаем за RUB)
+        source: 'Тинькофф Банк',
+        lastUpdated: new Date(data.payload.lastUpdate.milliseconds),
+        isOfficial: false,
+      },
+      'RUB-USD': {
+        rate: 1 / usdToRub.buy, // Покупка USD (продаем RUB)
+        source: 'Тинькофф Банк',
+        lastUpdated: new Date(data.payload.lastUpdate.milliseconds),
+        isOfficial: false,
+      },
     }
-    throw error
-  }
-}
-
-// Получить курс BYN из НБРБ
-const fetchBYNRate = async (): Promise<{ rate: number; source: string }> => {
-  try {
-    console.log('[API] Fetching BYN rate from NBRB...')
-    const response = await fetchWithRetry('https://api.nbrb.by/exrates/rates/USD?parammode=2')
-    const data = await response.json()
-    const rate = data.Cur_OfficialRate
-    console.log('[API] ✓ BYN rate fetched:', rate, 'BYN per 1 USD')
-    return { rate, source: SOURCES.NBRB }
   } catch (error) {
-    console.error('[API] ✗ Failed to fetch BYN rate:', error)
-    console.warn('[API] Using fallback BYN rate: 3.25')
-    return { rate: 3.25, source: SOURCES.FALLBACK }
+    console.error('Error fetching Tinkoff rates:', error)
+    return null
   }
 }
 
-// Получить курс RUB из ЦБ РФ
-const fetchRUBRate = async (): Promise<{ rate: number; source: string }> => {
+// Получить официальные курсы (НБРБ + ЦБ РФ)
+const fetchOfficialRates = async (): Promise<ConversionRates> => {
   try {
-    console.log('[API] Fetching RUB rate from CBR...')
-    const response = await fetchWithRetry('https://www.cbr-xml-daily.ru/daily_json.js')
-    const data = await response.json()
-    const rate = data.Valute.USD.Value
-    console.log('[API] ✓ RUB rate fetched:', rate, 'RUB per 1 USD')
-    return { rate, source: SOURCES.CBR }
+    const [bynResponse, rubResponse] = await Promise.all([
+      fetch('https://api.nbrb.by/exrates/rates/USD?parammode=2'),
+      fetch('https://www.cbr-xml-daily.ru/daily_json.js'),
+    ])
+
+    if (!bynResponse.ok || !rubResponse.ok) {
+      throw new Error('Failed to fetch official rates')
+    }
+
+    const bynData = await bynResponse.json()
+    const rubData = await rubResponse.json()
+
+    const bynRate = bynData.Cur_OfficialRate
+    const rubRate = rubData.Valute.USD.Value
+
+    const now = new Date()
+
+    return {
+      'BYN-USD': { rate: 1 / bynRate, source: 'НБРБ', lastUpdated: now, isOfficial: true },
+      'BYN-RUB': { rate: rubRate / bynRate, source: 'НБРБ/ЦБ РФ', lastUpdated: now, isOfficial: true },
+      'USD-BYN': { rate: bynRate, source: 'НБРБ', lastUpdated: now, isOfficial: true },
+      'USD-RUB': { rate: rubRate, source: 'ЦБ РФ', lastUpdated: now, isOfficial: true },
+      'RUB-BYN': { rate: bynRate / rubRate, source: 'НБРБ/ЦБ РФ', lastUpdated: now, isOfficial: true },
+      'RUB-USD': { rate: 1 / rubRate, source: 'ЦБ РФ', lastUpdated: now, isOfficial: true },
+    }
   } catch (error) {
-    console.error('[API] ✗ Failed to fetch RUB rate:', error)
-    console.warn('[API] Using fallback RUB rate: 92.5')
-    return { rate: 92.5, source: SOURCES.FALLBACK }
+    console.error('Error fetching official rates:', error)
+    // Fallback rates
+    const now = new Date()
+    return {
+      'BYN-USD': { rate: 0.3426, source: 'Fallback', lastUpdated: now, isOfficial: false },
+      'BYN-RUB': { rate: 26.87, source: 'Fallback', lastUpdated: now, isOfficial: false },
+      'USD-BYN': { rate: 2.9189, source: 'Fallback', lastUpdated: now, isOfficial: false },
+      'USD-RUB': { rate: 78.74, source: 'Fallback', lastUpdated: now, isOfficial: false },
+      'RUB-BYN': { rate: 0.0372, source: 'Fallback', lastUpdated: now, isOfficial: false },
+      'RUB-USD': { rate: 0.0127, source: 'Fallback', lastUpdated: now, isOfficial: false },
+    }
   }
 }
 
-// Создать объект курса
-const createRate = (rate: number, source: string): ConversionRate => ({
-  rate,
-  source,
-  lastUpdated: new Date(),
-  isOfficial: source !== SOURCES.FALLBACK,
-})
-
-// Загрузить курсы конверсии
+// Основная функция получения курсов
 export const fetchConversionRates = async (): Promise<ConversionRates> => {
+  // Проверяем кэш
   const cached = getCachedRates()
   if (cached) {
-    console.log('[API] Using cached rates')
+    console.log('Using cached conversion rates')
     return cached
   }
 
-  console.log('[API] Fetching fresh rates...')
+  console.log('Fetching fresh conversion rates...')
 
-  try {
-    const [bynData, rubData] = await Promise.all([fetchBYNRate(), fetchRUBRate()])
+  // Получаем официальные курсы
+  const officialRates = await fetchOfficialRates()
 
-    // Определяем общий источник
-    const allOfficial = bynData.source !== SOURCES.FALLBACK && rubData.source !== SOURCES.FALLBACK
-    const source = allOfficial 
-      ? `${SOURCES.NBRB} / ${SOURCES.CBR}` 
-      : bynData.source === SOURCES.FALLBACK && rubData.source === SOURCES.FALLBACK
-        ? SOURCES.FALLBACK
-        : `${bynData.source === SOURCES.FALLBACK ? SOURCES.CBR : SOURCES.NBRB} (частично)`
+  // Пробуем получить курсы Тинькофф
+  const tinkoffRates = await fetchTinkoffRates()
 
-    // Рассчитываем все пары конверсии
-    const rates: ConversionRates = {
-      'BYN-USD': createRate(1 / bynData.rate, source),
-      'BYN-RUB': createRate(rubData.rate / bynData.rate, source),
-      'USD-BYN': createRate(bynData.rate, source),
-      'USD-RUB': createRate(rubData.rate, source),
-      'RUB-BYN': createRate(bynData.rate / rubData.rate, source),
-      'RUB-USD': createRate(1 / rubData.rate, source),
+  // Если Тинькофф доступен, обновляем USD-RUB пары
+  const finalRates: ConversionRates = {
+    ...officialRates,
+    ...(tinkoffRates || {}),
+  }
+
+  // Сохраняем в кэш
+  cacheRates(finalRates)
+
+  return finalRates
+}
+
+// Получить курсы для конкретного банка
+export const getBankRates = async (bankName: string): Promise<ConversionRates> => {
+  const baseRates = await fetchConversionRates()
+  const lowerBankName = bankName.toLowerCase()
+
+  // Для Тинькофф возвращаем реальные курсы
+  if (lowerBankName.includes('тинькофф') || lowerBankName.includes('tinkoff')) {
+    const tinkoffRates = await fetchTinkoffRates()
+    if (tinkoffRates?.['USD-RUB']) {
+      return {
+        ...baseRates,
+        ...tinkoffRates,
+      }
     }
+  }
 
-    cacheRates(rates)
-    console.log('[API] Rates cached successfully')
-    return rates
-  } catch (error) {
-    console.error('[API] Critical error fetching rates:', error)
-    const source = SOURCES.FALLBACK
-    
-    return {
-      'BYN-USD': createRate(0.3077, source),
-      'BYN-RUB': createRate(28.46, source),
-      'USD-BYN': createRate(3.25, source),
-      'USD-RUB': createRate(92.5, source),
-      'RUB-BYN': createRate(0.0351, source),
-      'RUB-USD': createRate(0.0108, source),
-    }
+  // Для других банков добавляем спред к официальным курсам
+  // Спред зависит от "крупности" банка
+  let spread = 0.02 // 2% по умолчанию
+
+  if (
+    lowerBankName.includes('беларусбанк') ||
+    lowerBankName.includes('сбер') ||
+    lowerBankName.includes('альфа') ||
+    lowerBankName.includes('втб')
+  ) {
+    spread = 0.015 // 1.5% для крупных банков
+  } else if (
+    lowerBankName.includes('техно') ||
+    lowerBankName.includes('статус') ||
+    lowerBankName.includes('бсб')
+  ) {
+    spread = 0.025 // 2.5% для мелких банков
+  }
+
+  // Применяем спред к официальным курсам
+  const now = new Date()
+  return {
+    'BYN-USD': {
+      rate: baseRates['BYN-USD'].rate * (1 - spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
+    'BYN-RUB': {
+      rate: baseRates['BYN-RUB'].rate * (1 - spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
+    'USD-BYN': {
+      rate: baseRates['USD-BYN'].rate * (1 + spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
+    'USD-RUB': {
+      rate: baseRates['USD-RUB'].rate * (1 + spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
+    'RUB-BYN': {
+      rate: baseRates['RUB-BYN'].rate * (1 - spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
+    'RUB-USD': {
+      rate: baseRates['RUB-USD'].rate * (1 - spread),
+      source: `${bankName} (≈${(spread * 100).toFixed(1)}%)`,
+      lastUpdated: now,
+      isOfficial: false,
+    },
   }
 }
 
@@ -181,8 +276,8 @@ export const getRateSource = (rates: ConversionRates): string => {
   return rates['USD-BYN'].source
 }
 
-// Проверить, являются ли данные актуальными
-export const areRatesFresh = (rates: ConversionRates): boolean => {
+// Проверить, являются ли данные официальными
+export const areRatesOfficial = (rates: ConversionRates): boolean => {
   return rates['USD-BYN'].isOfficial
 }
 

@@ -132,7 +132,7 @@ function AppContent() {
                       )}
                     </div>
                   )}
-                  {!atmsLoading && !atmsError && (
+                  {!atmsLoading && !atmsError && atms.length > 0 && (
                     <>
                       <AtmMap userLat={latitude} userLon={longitude} atms={atms} radius={radius} />
                       <BankRatesTable atms={atms} radius={radius} />
@@ -162,6 +162,3 @@ function App() {
 }
 
 export default App
-// Test
-// Test file for husky
-const x: any = 123

@@ -49,34 +49,43 @@ function reducer(state: UseNearbyAtmsState, action: Action): UseNearbyAtmsState 
 const CACHE_KEY_PREFIX = 'atmCache_'
 const CACHE_DURATION = 1000 * 60 * 30 // 30 минут
 
-const getCacheKey = (lat: number, lon: number, radius: number): string => {
+const getCacheKey = (lat: number, lon: number): string => {
   // Округляем координаты для кеша (чтобы не создавать слишком много ключей)
   const roundedLat = Math.round(lat * 100) / 100
   const roundedLon = Math.round(lon * 100) / 100
-  return `${CACHE_KEY_PREFIX}${roundedLat}_${roundedLon}_${radius}`
+  return `${CACHE_KEY_PREFIX}${roundedLat}_${roundedLon}`
 }
 
-const getCachedAtms = (lat: number, lon: number, radius: number): Atm[] | null => {
+interface CachedData {
+  data: Atm[]
+  radius: number
+  timestamp: number
+}
+
+const getCachedAtms = (lat: number, lon: number): CachedData | null => {
   try {
-    const key = getCacheKey(lat, lon, radius)
+    const key = getCacheKey(lat, lon)
     const cached = localStorage.getItem(key)
     if (!cached) return null
 
-    const { data, timestamp } = JSON.parse(cached)
-    if (Date.now() - timestamp > CACHE_DURATION) {
+    const parsed: CachedData = JSON.parse(cached)
+    if (Date.now() - parsed.timestamp > CACHE_DURATION) {
       localStorage.removeItem(key)
       return null
     }
-    return data
+    return parsed
   } catch {
     return null
   }
 }
 
 const cacheAtms = (lat: number, lon: number, radius: number, atms: Atm[]): void => {
+  // Не кешируем пустые результаты (ошибки API)
+  if (atms.length === 0) return
+  
   try {
-    const key = getCacheKey(lat, lon, radius)
-    localStorage.setItem(key, JSON.stringify({ data: atms, timestamp: Date.now() }))
+    const key = getCacheKey(lat, lon)
+    localStorage.setItem(key, JSON.stringify({ data: atms, radius, timestamp: Date.now() }))
   } catch {
     // Ignore localStorage errors
   }
@@ -98,12 +107,18 @@ export const useNearbyAtms = (
       return
     }
 
-    // Проверяем кеш сначала
-    const cached = getCachedAtms(latitude, longitude, radius)
+    // Проверяем кеш сначала (умное кеширование с нарастанием радиуса)
+    const cached = getCachedAtms(latitude, longitude)
     if (cached) {
-      console.log(`[useNearbyAtms] Using cached ATMs for radius ${radius}m`)
-      dispatch({ type: 'SUCCESS', payload: cached })
-      return
+      if (cached.radius >= radius) {
+        // В кеше уже есть данные для большего или равного радиуса - фильтруем
+        const filteredAtms = cached.data.filter(atm => (atm.distance || 0) <= radius)
+        console.log(`[useNearbyAtms] Using cached ATMs (cached radius: ${cached.radius}m, requested: ${radius}m, filtered: ${filteredAtms.length})`)
+        dispatch({ type: 'SUCCESS', payload: filteredAtms })
+        return
+      }
+      // В кеше данные для меньшего радиуса - будем расширять
+      console.log(`[useNearbyAtms] Cache has smaller radius (${cached.radius}m), expanding to ${radius}m`)
     }
 
     // Отменяем предыдущий таймер debounce
@@ -142,8 +157,19 @@ export const useNearbyAtms = (
         // Проверяем не был ли запрос отменен
         if (!abortControllerRef.current.signal.aborted) {
           console.log(`[useNearbyAtms] Loaded ${atms.length} ATMs`)
-          // Сохраняем в кеш
-          cacheAtms(latitude, longitude, radius, atms)
+          
+          // Объединяем с кешем если он есть (умное кеширование)
+          let finalAtms = atms
+          if (cached && cached.radius < radius && cached.data.length > 0) {
+            // Объединяем старые и новые данные, удаляем дубликаты
+            const existingIds = new Set(atms.map(a => a.id))
+            const uniqueOldAtms = cached.data.filter(a => !existingIds.has(a.id))
+            finalAtms = [...atms, ...uniqueOldAtms]
+            console.log(`[useNearbyAtms] Merged with cache: ${finalAtms.length} total ATMs`)
+          }
+          
+          // Сохраняем в кеш только если получили данные
+          cacheAtms(latitude, longitude, radius, finalAtms)
           dispatch({ type: 'SUCCESS', payload: atms })
         }
       } catch (error) {

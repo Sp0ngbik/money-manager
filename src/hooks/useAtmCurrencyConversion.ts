@@ -1,6 +1,10 @@
 import { useEffect, useReducer, useCallback } from 'react'
 import type { Atm, CurrencyCode } from '../types'
-import { fetchConversionRates, type ConversionRates } from '../services/currencyConversionApi'
+import {
+  fetchConversionRates,
+  getBankRates,
+  type ConversionRates,
+} from '../services/currencyConversionApi'
 
 type AtmWithConversion = Atm & {
   conversionRates?: Array<{
@@ -8,6 +12,7 @@ type AtmWithConversion = Atm & {
     rate: number
     label: string
   }>
+  rateSource?: string
 }
 
 interface UseAtmCurrencyConversionState {
@@ -51,16 +56,14 @@ function reducer(
   }
 }
 
-// Моковые данные о поддерживаемых валютах (так как Overpass API не дает эту инфу)
+// Моковые данные о поддерживаемых валютах
 const getMockSupportedCurrencies = (operator?: string): CurrencyCode[] => {
   const allCurrencies: CurrencyCode[] = ['BYN', 'USD', 'RUB']
 
-  // Если оператор неизвестен - считаем что поддерживает все валюты
   if (!operator) return allCurrencies
 
   const lowerOperator = operator.toLowerCase()
 
-  // Белорусские банки обычно поддерживают все валюты
   if (
     lowerOperator.includes('беларус') ||
     lowerOperator.includes('белагро') ||
@@ -69,12 +72,20 @@ const getMockSupportedCurrencies = (operator?: string): CurrencyCode[] => {
     lowerOperator.includes('белгазпром') ||
     lowerOperator.includes('альфа') ||
     lowerOperator.includes('втб') ||
-    lowerOperator.includes('сбер')
+    lowerOperator.includes('сбер') ||
+    lowerOperator.includes('мтбанк') ||
+    lowerOperator.includes('mtbank') ||
+    lowerOperator.includes('приор') ||
+    lowerOperator.includes('техно') ||
+    lowerOperator.includes('статус') ||
+    lowerOperator.includes('бсб') ||
+    lowerOperator.includes('ррб') ||
+    lowerOperator.includes('паритет') ||
+    lowerOperator.includes('евро')
   ) {
     return allCurrencies
   }
 
-  // Иностранные банки могут поддерживать только USD
   if (
     lowerOperator.includes('citibank') ||
     lowerOperator.includes('deutsche') ||
@@ -83,11 +94,9 @@ const getMockSupportedCurrencies = (operator?: string): CurrencyCode[] => {
     return ['USD']
   }
 
-  // По умолчанию - все валюты
   return allCurrencies
 }
 
-// Определить цвет подсветки банкомата
 export const getAtmHighlightColor = (
   atm: Atm,
   selectedCurrency: CurrencyCode
@@ -95,13 +104,10 @@ export const getAtmHighlightColor = (
   const supported = atm.supportedCurrencies || getMockSupportedCurrencies(atm.operator)
 
   if (supported.includes(selectedCurrency)) {
-    // Поддерживает текущую валюту - зеленый
     return '#10b981'
   } else if (supported.length >= 2) {
-    // Поддерживает много валют но не текущую - желтый
     return '#f59e0b'
   } else {
-    // Поддерживает мало валют - красный
     return '#ef4444'
   }
 }
@@ -118,40 +124,40 @@ export const useAtmCurrencyConversion = (
     dispatch({ type: 'LOADING' })
 
     try {
-      const rates = await fetchConversionRates()
+      const baseRates = await fetchConversionRates()
 
-      // Добавляем моковые валюты и актуальные курсы конверсии к каждому банкомату
-      const atmsWithConversion: AtmWithConversion[] = atms.map((atm) => {
-        const supportedCurrencies = getMockSupportedCurrencies(atm.operator)
+      const atmsWithConversion: AtmWithConversion[] = await Promise.all(
+        atms.map(async (atm) => {
+          const supportedCurrencies = getMockSupportedCurrencies(atm.operator)
+          const bankRates = await getBankRates(atm.operator || 'Банкомат')
+          const conversionRates: Array<{ pair: string; rate: number; label: string }> = []
 
-        // Формируем актуальные пары конверсии только для валют, поддерживаемых банкоматом
-        const conversionRates: Array<{ pair: string; rate: number; label: string }> = []
-
-        // Для каждой поддерживаемой валюты (кроме выбранной) добавляем конверсию
-        supportedCurrencies.forEach((currency) => {
-          if (currency !== selectedCurrency) {
-            const pairKey = `${selectedCurrency}-${currency}` as keyof ConversionRates
-            const rate = rates[pairKey]
-            if (typeof rate === 'number') {
-              conversionRates.push({
-                pair: pairKey,
-                rate,
-                label: `${selectedCurrency} → ${currency}`,
-              })
+          supportedCurrencies.forEach((currency) => {
+            if (currency !== selectedCurrency) {
+              const pairKey = `${selectedCurrency}-${currency}` as keyof ConversionRates
+              const rate = bankRates[pairKey]
+              if (rate) {
+                conversionRates.push({
+                  pair: pairKey,
+                  rate: rate.rate,
+                  label: `${selectedCurrency} → ${currency}`,
+                })
+              }
             }
+          })
+
+          return {
+            ...atm,
+            supportedCurrencies,
+            conversionRates,
+            rateSource: bankRates['USD-BYN'].source,
           }
         })
-
-        return {
-          ...atm,
-          supportedCurrencies,
-          conversionRates,
-        }
-      })
+      )
 
       dispatch({
         type: 'SUCCESS',
-        payload: { atms: atmsWithConversion, rates },
+        payload: { atms: atmsWithConversion, rates: baseRates },
       })
     } catch {
       dispatch({ type: 'ERROR', payload: 'Не удалось загрузить курсы валют' })
